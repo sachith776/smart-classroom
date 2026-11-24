@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Classroom Dashboard</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c232d; --line:#2a3340;
+    --text:#e6edf3; --muted:#8b98a8; --accent:#4f8cff; --accent2:#7c5cff;
+    --green:#2ecc71; --yellow:#f5b83d; --orange:#ff8a3d; --red:#ff5c6c;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",Roboto,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  button{font-family:inherit;cursor:pointer}
+  .wrap{max-width:1300px;margin:0 auto;padding:20px}
+
+  /* Header */
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;font-size:22px}
+  .brand h1{font-size:20px;font-weight:700}
+  .brand p{font-size:13px;color:var(--muted)}
+  .head-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .clock{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+  .date{font-size:12px;color:var(--muted);text-align:right}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;background:var(--panel2);border:1px solid var(--line)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+  .dot.g{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .dot.y{background:var(--yellow);box-shadow:0 0 8px var(--yellow)}
+  .dot.r{background:var(--red);box-shadow:0 0 8px var(--red)}
+
+  /* Tabs */
+  .tabs{display:flex;gap:6px;margin-bottom:18px;background:var(--panel);padding:6px;border-radius:12px;width:fit-content;border:1px solid var(--line)}
+  .tab{background:none;border:none;color:var(--muted);padding:9px 18px;border-radius:8px;font-size:14px;font-weight:600}
+  .tab.active{background:var(--accent);color:#fff}
+  .page{display:none}
+  .page.active{display:block}
+
+  /* Alert banner */
+  #alerts{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+  .alert{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;font-size:14px;font-weight:600;animation:pulse 1.6s infinite}
+  .alert.red{background:rgba(255,92,108,.15);border:1px solid var(--red);color:#ffb3bb}
+  .alert.yellow{background:rgba(245,184,61,.12);border:1px solid var(--yellow);color:#ffe0a3}
+  @keyframes pulse{50%{opacity:.75}}
+
+  /* Grid + cards */
+  .grid{display:grid;gap:16px}
+  .g-top{grid-template-columns:1.6fr 1fr}
+  .g-stats{grid-template-columns:repeat(4,1fr)}
+  .g-main{grid-template-columns:1.6fr 1fr}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+
+  /* Session card */
+  .session{background:linear-gradient(135deg,#1a2a4a 0%,#1d1f3f 100%);border-color:#2d3e66}
+  .session.off{background:var(--panel);border-color:var(--line)}
+  .s-status{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;margin-bottom:10px}
+  .s-subject{font-size:32px;font-weight:800;margin-bottom:4px}
+  .s-teacher{font-size:16px;color:#c3cfe0;margin-bottom:16px}
+  .s-meta{display:flex;gap:26px;flex-wrap:wrap}
+  .s-meta div span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .s-meta div b{font-size:16px}
+  .progress{height:6px;background:rgba(255,255,255,.1);border-radius:99px;margin-top:16px;overflow:hidden}
+  .progress i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px;transition:width .5s}
+  .next{margin-top:14px;font-size:13px;color:var(--muted)}
+
+  /* Environment card */
+  .env-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line)}
+  .env-row:last-child{border-bottom:none}
+  .env-label{display:flex;align-items:center;gap:10px;font-size:14px}
+  .env-icon{width:34px;height:34px;border-radius:9px;background:var(--panel2);display:grid;place-items:center;font-size:17px}
+  .gasbar{width:120px;height:8px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-top:4px}
+  .gasbar i{display:block;height:100%;border-radius:99px;transition:width .5s,background .5s}
+  .toggle{position:relative;width:46px;height:26px;background:var(--panel2);border:1px solid var(--line);border-radius:99px;transition:.25s}
+  .toggle::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--muted);transition:.25s}
+  .toggle.on{background:var(--green);border-color:var(--green)}
+  .toggle.on::after{left:23px;background:#fff}
+  .btn{background:var(--accent);color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600}
+  .btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+  .btn.danger{background:var(--red)}
+  .btn:hover{filter:brightness(1.1)}
+
+  /* Stats */
+  .stat{display:flex;align-items:center;gap:14px}
+  .stat-icon{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-size:22px}
+  .stat b{font-size:28px;display:block;line-height:1}
+  .stat span{font-size:13px;color:var(--muted)}
+
+  /* Student list */
+  .filters{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{background:var(--panel2);border:1px solid var(--line);color:var(--muted);padding:5px 11px;border-radius:99px;font-size:12px;font-weight:600}
+  .chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .students{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;max-height:470px;overflow-y:auto;padding-right:4px}
+  .stu{display:flex;align-items:center;gap:11px;padding:11px;background:var(--panel2);border-radius:10px;border-left:3px solid var(--muted)}
+  .stu.present{border-left-color:var(--green)}
+  .stu.late{border-left-color:var(--orange)}
+  .stu.out{border-left-color:var(--yellow)}
+  .stu.overdue{border-left-color:var(--red);background:rgba(255,92,108,.08)}
+  .stu.absent{border-left-color:#4a5463;opacity:.6}
+  .avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;flex-shrink:0}
+  .stu-name{font-size:14px;font-weight:600}
+  .stu-info{font-size:12px;color:var(--muted)}
+
+  /* Log */
+  .log{max-height:470px;overflow-y:auto;display:flex;flex-direction:column}
+  .log-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .log-time{color:var(--muted);font-variant-numeric:tabular-nums;flex-shrink:0;width:44px}
+  .log-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0}
+
+  /* Timetable */
+  .tt-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .days{display:flex;gap:6px;flex-wrap:wrap}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:12px 14px;text-align:left;font-size:14px;border-bottom:1px solid var(--line)}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+  tr.now td{background:rgba(79,140,255,.1)}
+  tr.now td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+  tr.break td{color:var(--muted);font-style:italic}
+  .tag{display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700}
+  .form{display:grid;grid-template-columns:repeat(6,1fr) auto;gap:10px;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+  input,select{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;width:100%}
+  input:focus,select:focus{outline:none;border-color:var(--accent)}
+
+  /* Cards page */
+  .g-cards{grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+
+  ::-webkit-scrollbar{width:6px}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+
+  .demo{font-size:11px;color:var(--yellow)}
+  @media(max-width:900px){
+    .g-top,.g-main{grid-template-columns:1fr}
+    .g-stats{grid-template-columns:repeat(2,1fr)}
+    .form{grid-template-columns:1fr 1fr}
+    .s-subject{font-size:26px}
+  }
+  /* v2 additions */
+  .class-select{background:var(--panel2);border:1px solid var(--line);color:var(--text);font-size:18px;font-weight:700;padding:6px 34px 6px 12px;border-radius:10px;appearance:none;-webkit-appearance:none;cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b98a8' stroke-width='2' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;width:auto}
+  .g-classes{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+  .class-card{display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden}
+  .class-card::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--cc,var(--accent))}
+  .class-card.current{border-color:var(--accent)}
+  .cc-name{font-size:22px;font-weight:800}
+  .cc-room{font-size:13px;color:var(--muted)}
+  .cc-stats{display:flex;gap:18px;font-size:13px;color:var(--muted)}
+  .cc-stats b{color:var(--text);font-size:16px;display:block}
+  .cc-actions{display:flex;gap:8px;margin-top:auto}
+  .add-card{border:2px dashed var(--line);background:transparent;display:flex;flex-direction:column;gap:10px}
+  .add-card h3{font-size:16px}
+  .two{display:grid;grid-template-columns:380px 1fr;gap:16px;align-items:start}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+  .field label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+  .scanbox{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;margin-bottom:16px;transition:.3s}
+  .scanbox.waiting{border-color:var(--accent);background:rgba(79,140,255,.07)}
+  .scanbox.got{border-color:var(--green);background:rgba(46,204,113,.08)}
+  .scan-icon{font-size:38px;margin-bottom:6px}
+  .scan-uid{font-family:monospace;font-size:20px;font-weight:700;letter-spacing:.08em;margin:6px 0}
+  .scan-msg{font-size:13px;color:var(--muted);margin-bottom:12px}
+  .waves{display:inline-block;animation:wave 1.2s infinite}
+  @keyframes wave{50%{transform:scale(1.15);opacity:.6}}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .toolbar input{max-width:240px}
+  .toolbar select{max-width:170px}
+  .row-actions{display:flex;gap:6px;justify-content:flex-end}
+  .btn.sm{padding:6px 10px;font-size:12px}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--panel2);border:1px solid var(--line);padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;transition:.3s;z-index:99}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  .empty{color:var(--muted);font-size:14px;padding:30px;text-align:center}
+  @media(max-width:900px){.two{grid-template-columns:1fr}}
+  /* v4: digital twin + emergency */
+  .g-twin{grid-template-columns:1.7fr 1fr;align-items:start}
+  #twin{width:100%;height:auto;display:block;border-radius:12px;background:#0b1018}
+  #twin text{font-family:inherit}
+  .seat{transition:fill .4s,stroke .4s,opacity .4s}
+  .fan-spin{transform-box:fill-box;transform-origin:center;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .pir-pulse{transform-box:fill-box;transform-origin:center;animation:ping 1.4s ease-out infinite}
+  @keyframes ping{0%{transform:scale(.4);opacity:.9}100%{transform:scale(2.2);opacity:0}}
+  .flash{animation:flash .8s infinite}
+  @keyframes flash{50%{opacity:.25}}
+  .door-leaf{transition:transform .8s ease;transform-box:view-box}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:12px}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+  .emg-btn{width:100%;padding:16px;font-size:16px;font-weight:800;background:linear-gradient(135deg,#ff3b4f,#c4142a);color:#fff;border:none;border-radius:12px;letter-spacing:.03em;box-shadow:0 6px 24px rgba(255,59,79,.3)}
+  .emg-btn:hover{filter:brightness(1.1)}
+  .emg-head{background:linear-gradient(135deg,#5a0d18,#2a0910);border:1px solid var(--red);border-radius:14px;padding:18px;margin-bottom:14px}
+  .emg-head h3{font-size:18px;color:#ffb3bb;margin-bottom:4px}
+  .emg-count{font-size:44px;font-weight:800;line-height:1.1}
+  .emg-bar{height:10px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden;margin:10px 0 4px}
+  .emg-bar i{display:block;height:100%;background:var(--green);border-radius:99px;transition:width .5s}
+  .rc-list{max-height:330px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+  .rc{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-radius:9px;background:var(--panel2);font-size:13px}
+  .rc.missing{border-left:3px solid var(--red)}
+  .rc.safe{border-left:3px solid var(--green);opacity:.7}
+  .rc small{color:var(--muted);display:block;font-size:11px}
+  body.emergency header{box-shadow:0 0 0 2px var(--red);border-radius:14px;padding:8px;animation:pulse 1.2s infinite}
+  .readout{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .readout div{background:var(--panel2);border-radius:10px;padding:12px}
+  .readout span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .readout b{display:block;font-size:20px;margin-top:2px}
+  @media(max-width:900px){.g-twin{grid-template-columns:1fr}}
+  /* v3 additions */
+  .role-teacher .admin-only{display:none!important}
+  #login{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:20px;
+    background:radial-gradient(circle at 30% 20%,#1d2b52 0%,var(--bg) 60%)}
+  #login.hide{display:none}
+  .login-box{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .login-box .logo{width:56px;height:56px;font-size:28px;margin:0 auto 14px}
+  .login-box h1{text-align:center;font-size:22px;margin-bottom:4px}
+  .login-box p.sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:24px}
+  .login-err{color:var(--red);font-size:13px;min-height:18px;margin-bottom:8px;text-align:center}
+  .hint{margin-top:18px;padding:12px;border-radius:10px;background:var(--panel2);font-size:12px;color:var(--muted);line-height:1.7}
+  .hint b{color:var(--text);font-family:monospace}
+  .icon-btn{background:var(--panel2);border:1px solid var(--line);color:var(--text);width:36px;height:36px;border-radius:10px;font-size:16px}
+  .icon-btn.off{opacity:.45}
+  .user-pill{display:flex;align-items:center;gap:8px;padding:4px 4px 4px 12px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);font-size:13px;font-weight:600}
+  .user-pill .btn{padding:5px 10px;border-radius:99px;font-size:12px}
+  .g-kpi{grid-template-columns:repeat(4,1fr)}
+  .kpi b{font-size:30px;display:block}
+  .kpi span{font-size:13px;color:var(--muted)}
+  .kpi small{font-size:12px;display:block;margin-top:4px}
+  .chart{width:100%;height:220px}
+  .pct{display:inline-block;min-width:52px;padding:3px 8px;border-radius:6px;font-weight:700;font-size:12px;text-align:center}
+  .minibar{height:6px;border-radius:99px;background:var(--panel2);overflow:hidden;width:90px;display:inline-block;vertical-align:middle;margin-left:8px}
+  .minibar i{display:block;height:100%;border-radius:99px}
+  tr.blocked td{opacity:.55}
+  tr.blocked td:last-child{opacity:1}
+  .g-set{grid-template-columns:1fr 1fr;align-items:start}
+  .check{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:14px;border-bottom:1px solid var(--line)}
+  .check:last-child{border-bottom:none}
+  .check input{width:18px;height:18px;accent-color:var(--accent)}
+  .note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px}
+  .tg-preview{background:#17212b;border-radius:12px;padding:14px;margin-top:14px;font-size:13px;line-height:1.6;border-left:3px solid #2aabee}
+  .tg-preview b{color:#2aabee}
+  @media(max-width:900px){.g-kpi{grid-template-columns:repeat(2,1fr)}.g-set{grid-template-columns:1fr}}
+</style>
+</head>
+<body class="role-teacher">
+<div id="login">
+  <div class="login-box" id="loginForm">
+    <div class="logo">🏫</div>
+    <h1>Smart Classroom</h1>
+    <p class="sub">Security, Safety &amp; Automation System</p>
+    <div class="field"><label>Username</label><input id="lUser" autocomplete="username" placeholder="Enter username"></div>
+    <div class="field"><label>Password</label><input id="lPass" type="password" autocomplete="current-password" placeholder="Enter password"></div>
+    <div class="login-err" id="lErr"></div>
+    <button class="btn" style="width:100%;padding:12px" type="button" id="loginBtn">🔐 Log in</button>
+    <div class="hint" id="lHint">Demo accounts:<br>Admin: <b>admin</b> / <b>admin123</b><br>Teacher: <b>teacher</b> / <b>teacher123</b></div>
+  </div>
+</div>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="logo">🏫</div>
+      <div>
+        <select class="class-select" id="classSel" aria-label="Select class"></select>
+        <p id="roomText">Smart Classroom Security, Safety &amp; Automation</p>
+      </div>
+    </div>
+    <div class="head-right">
+      <button class="icon-btn" id="soundBtn" title="Alert sound">🔔</button>
+      <div class="user-pill"><span id="userName">-</span><button class="btn ghost" id="logoutBtn">Log out</button></div>
+      <span class="pill"><span class="dot" id="connDot"></span><span id="connText">Connecting...</span></span>
+      <div>
+        <div class="clock" id="clock">--:--:--</div>
+        <div class="date" id="date"></div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-page="live">Live</button>
+    <button class="tab" data-page="twin">🧭 Digital Twin</button>
+    <button class="tab" data-page="timetable">Timetable</button>
+    <button class="tab" data-page="reports">Reports</button>
+    <button class="tab admin-only" data-page="classes">Classes</button>
+    <button class="tab admin-only" data-page="cards">RFID Cards</button>
+    <button class="tab admin-only" data-page="settings">Settings</button>
+  </nav>
+
+  <!-- LIVE PAGE -->
+  <section class="page active" id="page-live">
+    <div id="alerts"></div>
+
+    <div class="grid g-top">
+      <div class="card session" id="sessionCard">
+        <div class="s-status" id="sStatus"></div>
+        <div class="s-subject" id="sSubject">-</div>
+        <div class="s-teacher" id="sTeacher">-</div>
+        <div class="s-meta">
+          <div><span>Period</span><b id="sPeriod">-</b></div>
+          <div><span>Time</span><b id="sTime">-</b></div>
+          <div><span>Teacher arrived</span><b id="sArrived">-</b></div>
+          <div><span>Elapsed</span><b id="sElapsed">-</b></div>
+        </div>
+        <div class="progress"><i id="sProgress" style="width:0"></i></div>
+        <div class="next" id="sNext"></div>
+      </div>
+
+      <div class="card">
+        <h2>Classroom Environment</h2>
+        <div class="env-row">
+          <div class="env-label"><div class="env-icon">💨</div>
+            <div>Gas level <div class="gasbar"><i id="gasBar"></i></div></div>
+          </div>
+          <b id="gasVal">-</b>
+        </div>
+        <div class="env-row">
+          <div class="env-label"><div class="env-icon">🚶</div>Motion (PIR)</div>
+          <span class="pill" id="motion">-</span>
+        </div>
+        <div class="env-row">
+          <div class="env-label"><div class="env-icon" id="doorIcon">🔒</div>Door (Servo)</div>
+          <button class="btn ghost" id="doorBtn">-</button>
+        </div>
+        <div class="env-row">
+          <div class="env-label"><div class="env-icon">💡</div>Lights</div>
+          <button class="toggle" id="lightT" aria-label="Lights"></button>
+        </div>
+        <div class="env-row">
+          <div class="env-label"><div class="env-icon">🌀</div>Fan</div>
+          <button class="toggle" id="fanT" aria-label="Fan"></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g-stats" style="margin-top:16px">
+      <div class="card stat"><div class="stat-icon" style="background:rgba(46,204,113,.15)">✅</div><div><b id="cPresent">0</b><span>Present</span></div></div>
+      <div class="card stat"><div class="stat-icon" style="background:rgba(255,138,61,.15)">⏰</div><div><b id="cLate">0</b><span>Late</span></div></div>
+      <div class="card stat"><div class="stat-icon" style="background:rgba(245,184,61,.15)">🚻</div><div><b id="cOut">0</b><span>Out on break</span></div></div>
+      <div class="card stat"><div class="stat-icon" style="background:rgba(255,92,108,.15)">❌</div><div><b id="cAbsent">0</b><span>Absent</span></div></div>
+    </div>
+
+    <div class="grid g-main" style="margin-top:16px">
+      <div class="card">
+        <h2>Students
+          <div class="filters" id="filters">
+            <button class="chip active" data-f="all">All</button>
+            <button class="chip" data-f="present">Present</button>
+            <button class="chip" data-f="late">Late</button>
+            <button class="chip" data-f="out">Out</button>
+            <button class="chip" data-f="absent">Absent</button>
+          </div>
+        </h2>
+        <div class="students" id="students"></div>
+      </div>
+      <div class="card">
+        <h2>Activity Log <span class="demo" id="demoTag"></span></h2>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TIMETABLE PAGE -->
+  <section class="page" id="page-timetable">
+    <div class="card">
+      <div class="tt-head">
+        <h2 style="margin:0" id="ttTitle">Weekly Timetable</h2>
+        <div class="days" id="days"></div>
+      </div>
+      <table>
+        <thead><tr><th>Period</th><th>Time</th><th>Subject</th><th>Teacher</th><th></th></tr></thead>
+        <tbody id="ttBody"></tbody>
+      </table>
+      <div class="form admin-only">
+        <select id="fDay"></select>
+        <input id="fPeriod" placeholder="Period (e.g. 4)">
+        <input id="fStart" type="time">
+        <input id="fEnd" type="time">
+        <input id="fSubject" placeholder="Subject">
+        <select id="fTeacher"></select>
+        <button class="btn" id="addPeriod">+ Add</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CLASSES PAGE -->
+  <section class="page" id="page-classes">
+    <div class="grid g-classes" id="classGrid"></div>
+  </section>
+
+  <!-- DIGITAL TWIN PAGE -->
+  <section class="page" id="page-twin">
+    <div class="grid g-twin">
+      <div class="card">
+        <h2>Live Classroom Map <span id="twinSub" style="text-transform:none;letter-spacing:0"></span></h2>
+        <svg id="twin" viewBox="0 0 800 560"></svg>
+        <div class="legend">
+          <span><i style="background:#2ecc71"></i>Present</span><span><i style="background:#ff8a3d"></i>Late</span>
+          <span><i style="background:#f5b83d"></i>Out on break</span><span><i style="background:#2a3340"></i>Absent</span>
+          <span><i style="background:#ff5c6c"></i>Still inside (emergency)</span><span><i style="background:#4f8cff"></i>Safe (emergency)</span>
+        </div>
+      </div>
+      <div class="card" id="twinPanel"></div>
+    </div>
+  </section>
+
+  <!-- REPORTS PAGE -->
+  <section class="page" id="page-reports">
+    <div class="tt-head">
+      <h2 style="font-size:20px" id="repTitle">Attendance Report</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <div class="days" id="repRange">
+          <button class="chip active" data-r="7">Last 7 days</button>
+          <button class="chip" data-r="30">Last 30 days</button>
+          <button class="chip" data-r="90">This term</button>
+        </div>
+        <button class="btn" id="exportBtn">⬇️ Export to Excel</button>
+      </div>
+    </div>
+    <div class="grid g-kpi">
+      <div class="card kpi"><span>Average attendance</span><b id="kAvg">-</b><small id="kAvgNote"></small></div>
+      <div class="card kpi"><span>Late arrivals</span><b id="kLate">-</b><small style="color:var(--muted)">across all students</small></div>
+      <div class="card kpi"><span>Total absences</span><b id="kAbs">-</b><small style="color:var(--muted)">student-days</small></div>
+      <div class="card kpi"><span>Washroom breaks</span><b id="kBrk">-</b><small id="kBrkNote" style="color:var(--muted)"></small></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>Daily attendance %</h2>
+      <svg class="chart" id="repChart"></svg>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>Student summary <span style="text-transform:none;letter-spacing:0">sorted by lowest attendance</span></h2>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Student</th><th>Attendance</th><th>Present</th><th>Late</th><th>Absent</th><th>Breaks</th></tr></thead>
+          <tbody id="repBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS PAGE -->
+  <section class="page" id="page-settings">
+    <div class="grid g-set">
+      <div class="card">
+        <h2>📲 Telegram Alerts</h2>
+        <div class="field"><label>Bot token</label><input id="tgToken" placeholder="123456789:ABCdefGhIJKlmNoPQRstuVWxyz"></div>
+        <div class="field"><label>Chat ID</label><input id="tgChat" placeholder="e.g. 987654321"></div>
+        <p class="note">Create a bot with <b>@BotFather</b> on Telegram to get the token, then message the bot and use <b>@userinfobot</b> to find the chat ID. The ESP32 sends the messages, so alerts work even when this page is closed.</p>
+        <h2 style="margin-top:18px">💬 WhatsApp Alerts</h2>
+        <div class="field"><label>WhatsApp number</label><input id="waPhone" placeholder="e.g. +94771234567"></div>
+        <div class="field"><label>CallMeBot API key</label><input id="waKey" placeholder="e.g. 1234567"></div>
+        <p class="note">Save <b>+34 644 45 70 57</b> as a contact and send it <b>I allow callmebot to send me messages</b> on WhatsApp. Paste the API key it replies with. The same alerts are then sent to WhatsApp too (your own number only).</p>
+        <h2 style="margin-top:18px">Send alerts for</h2>
+        <label class="check"><input type="checkbox" id="tgGas"> 🔥 Gas leak detected</label>
+        <label class="check"><input type="checkbox" id="tgIntr"> 🚨 Intrusion (motion with no class)</label>
+        <label class="check"><input type="checkbox" id="tgTeach"> 👨‍🏫 Teacher not arrived</label>
+        <label class="check"><input type="checkbox" id="tgBreak"> 🚻 Student out too long</label>
+        <label class="check"><input type="checkbox" id="tgBlock"> 🚫 Blocked or unknown card used</label>
+        <div style="display:flex;gap:8px;margin-top:16px">
+          <button class="btn" id="saveSet" style="flex:1">💾 Save settings</button>
+          <button class="btn ghost" id="testTg">📨 Send test</button>
+        </div>
+        <div class="tg-preview"><b>Smart Classroom Bot</b><br>🔥 GAS ALERT: Grade 10 A<br>Gas level 3720 (limit 3600) at 09:14.<br>Buzzer activated. Please check the room.</div>
+      </div>
+      <div class="card">
+        <h2>⚙️ System Rules</h2>
+        <div class="field"><label>Washroom break limit (minutes)</label><input id="sBreak" type="number" min="1" max="60"></div>
+        <div class="field"><label>Late after (minutes from period start)</label><input id="sLate" type="number" min="0" max="40"></div>
+        <div class="field"><label>Teacher not arrived alert after (minutes)</label><input id="setTeacher" type="number" min="1" max="40"></div>
+        <div class="field"><label>Gas alert threshold (0 - 4095)</label><input id="sGas" type="number" min="500" max="4095"></div>
+        <div class="field"><label>Door open time after valid card (seconds)</label><input id="sDoor" type="number" min="2" max="30"></div>
+        <p class="note">These values are sent to the ESP32 and used by the firmware. The gas threshold should be set around 500 to 800 above the sensor's clean-air baseline after warm-up.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- RFID CARDS PAGE -->
+  <section class="page" id="page-cards">
+    <div class="two">
+      <div class="card">
+        <h2 id="cardFormTitle">Register New Card</h2>
+        <div class="scanbox" id="scanbox">
+          <div class="scan-icon" id="scanIcon">💳</div>
+          <div class="scan-uid" id="scanUid">-- -- -- --</div>
+          <div class="scan-msg" id="scanMsg">Press Scan, then tap the card on the RFID reader.</div>
+          <button class="btn" id="scanBtn">📡 Scan Card</button>
+        </div>
+        <div class="field"><label>Card UID</label><input id="kUid" placeholder="e.g. A3 4F 91 2C (or scan)"></div>
+        <div class="field"><label>Full name</label><input id="kName" placeholder="e.g. Kasun Perera"></div>
+        <div class="field"><label>Role</label>
+          <select id="kRole"><option>Student</option><option>Teacher</option><option>Admin</option></select>
+        </div>
+        <div class="field" id="kClassField"><label>Class</label><select id="kClass"></select></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" id="saveCard" style="flex:1">💾 Save Card</button>
+          <button class="btn ghost" id="cancelEdit" style="display:none">Cancel</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Registered Cards <span id="cardCount" style="text-transform:none;letter-spacing:0"></span></h2>
+        <div class="toolbar">
+          <input id="cSearch" placeholder="🔍 Search name or UID">
+          <select id="cRoleF"><option value="">All roles</option><option>Student</option><option>Teacher</option><option>Admin</option></select>
+          <select id="cClassF"></select>
+        </div>
+        <div style="max-height:560px;overflow-y:auto">
+          <table>
+            <thead><tr><th>Name</th><th>Role</th><th>Class</th><th>Card UID</th><th>Status</th><th></th></tr></thead>
+            <tbody id="cardBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+<div class="toast" id="toast"></div>
+<div id="modal" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.6);place-items:center;padding:20px">
+  <div class="card" style="max-width:400px;width:100%;padding:24px">
+    <p id="modalMsg" style="font-size:15px;line-height:1.6;white-space:pre-line;margin-bottom:20px"></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn ghost" id="modalNo">Cancel</button>
+      <button class="btn danger" id="modalYes">Yes, continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK (only used when FIREBASE_CONFIG below is filled in) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+/* ============================================================
+   ESP32 API (all JSON). If the ESP32 is not reachable the page
+   runs in DEMO mode and saves changes in the browser instead.
+
+   GET  /api/status?class=<id>  -> { session:{active,arrivedAt}, env:{gas,motion,door,light,fan},
+                                     attendance:{ "<uid>":{status,inTime,outSince,lateMin} }, log:[{t,msg,type}] }
+   GET  /api/classes            -> [{id,name,room,color}]        POST /api/classes   (full array)
+   GET  /api/cards              -> [{uid,name,role,classId}]      POST /api/cards     (full array)
+   GET  /api/timetable          -> [{classId,day,period,start,end,subject,teacher}]
+                                                                  POST /api/timetable (full array)
+   GET  /api/lastuid            -> {uid:"A3 4F 91 2C", t:<ms>}   (last card tapped on the reader)
+   POST /api/relay?dev=light|fan&state=0|1
+   POST /api/door?action=open|lock
+   ============================================================ */
+/* ================= FIREBASE CLOUD =================
+   Paste your web app config from Firebase console > Project settings > Your apps.
+   Leave apiKey empty to use the ESP32 directly (local) or demo mode. */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyA7xXK06kY8FRj-vxiGAk4WvbYNcrHwCcQ",
+  authDomain: "smart-class-d2dbc.firebaseapp.com",
+  databaseURL: "https://smart-class-d2dbc-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "smart-class-d2dbc",
+  appId: ""
+};
+const CLOUD = !!(window.firebase && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.databaseURL);
+let fdb = null, fauth = null, liveRef = null;
+if (CLOUD) { firebase.initializeApp(FIREBASE_CONFIG); fdb = firebase.database(); fauth = firebase.auth(); }
+const asArray = v => Array.isArray(v) ? v.filter(x => x != null) : v ? Object.values(v) : [];
+const clean = v => JSON.parse(JSON.stringify(v));
+async function cloudGet(node, fallback){ const snap = await fdb.ref(node).get(); return snap.exists() ? snap.val() : fallback; }
+function emptyLive(){ return {session:{active:false, arrivedAt:0}, env:{gas:0, motion:false, door:"locked", light:false, fan:false},
+  attendance:{}, log:[], emergency:{active:false, safe:[]}, updatedAt:0, lastUid:{uid:"", t:0}}; }
+function normLive(v){
+  if (!v) return emptyLive();
+  const e = emptyLive();
+  return {...e, ...v, session:{...e.session, ...(v.session || {})}, env:{...e.env, ...(v.env || {})}, attendance: v.attendance || {},
+    log: asArray(v.log), emergency:{...e.emergency, ...(v.emergency || {}), safe: asArray(v.emergency && v.emergency.safe)}};
+}
+function subscribeLive(cls){
+  if (!CLOUD || !cls) return;
+  if (liveRef) liveRef.off();
+  live[cls] = live[cls] || emptyLive();
+  liveRef = fdb.ref("live/" + cls);
+  liveRef.on("value", snap => { live[cls] = normLive(snap.val()); if (cls === curClass) refresh(); });
+}
+function cloudCommand(path){
+  const [p, qs] = path.split("?"), q = new URLSearchParams(qs || ""), cls = q.get("class") || curClass;
+  let cmd = null;
+  if (p === "/api/relay") cmd = `relay:${q.get("dev")}:${q.get("state") === "1" ? 1 : 0}`;
+  else if (p === "/api/door") cmd = q.get("action") === "open" ? "door:open" : "door:lock";
+  else if (p === "/api/emergency") cmd = q.get("state") === "1" ? "emg:1" : "emg:0";
+  else if (p === "/api/emergency/safe") cmd = "safe:" + q.get("uid");
+  else if (p === "/api/telegram/test") cmd = "tgtest";
+  if (cmd) fdb.ref("commands/" + cls).push({cmd, t: Date.now(), by: user ? user.name : ""});
+}
+
+const API = "";            // same origin as the ESP32. For testing: "http://192.168.8.106"
+const REFRESH_MS = 2000;
+let BREAK_LIMIT_MIN = 10;
+let GAS_THRESHOLD = 3600;
+let TEACHER_ALERT_MIN = 5;
+const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday"];
+const WEEK = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const COLORS = ["#4f8cff","#7c5cff","#2ecc71","#f5b83d","#ff8a3d","#ff5c6c","#22c1c3","#e056fd"];
+
+let demo = false, connected = false;
+let classes = [], cards = [], timetable = [];
+let live = {};             // live status per class id
+let curClass = null;
+let filter = "all";
+let ttDay = "Monday";
+let editingUid = null;
+let scanTimer = null;
+
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,"0");
+const hm = d => pad(d.getHours()) + ":" + pad(d.getMinutes());
+const toMin = t => { const [h,m] = t.split(":").map(Number); return h*60+m; };
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* Demo runs on a simulated clock (Monday 08:45) so a class is always in progress */
+const REAL_START = Date.now();
+const demoBase = (() => { const d = new Date(); d.setDate(d.getDate() + (1 - d.getDay() + 7) % 7); d.setHours(8,45,0,0); return d.getTime(); })();
+const clockNow = () => demo ? demoBase + (Date.now() - REAL_START) : Date.now();
+const nowMin = () => { const d = new Date(clockNow()); return d.getHours()*60 + d.getMinutes() + d.getSeconds()/60; };
+const minsAgo = ts => Math.floor((clockNow() - ts) / 60000);
+
+function toast(msg){ const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2200); }
+
+/* ---------------- LOCAL STORAGE (demo) ---------------- */
+function store(key, val){ try { localStorage.setItem("sc_" + key, JSON.stringify(val)); } catch(e){} }
+function restore(key){ try { const v = localStorage.getItem("sc_" + key); return v ? JSON.parse(v) : null; } catch(e){ return null; } }
+
+/* ---------------- DEMO DATA ---------------- */
+function randUid(){ return Array.from({length:4}, () => Math.floor(Math.random()*256).toString(16).toUpperCase().padStart(2,"0")).join(" "); }
+
+function demoData(){
+  const cls = [
+    {id:"10A", name:"Grade 10 A", room:"Room 12, Main Building", color:COLORS[0]},
+    {id:"10B", name:"Grade 10 B", room:"Room 13, Main Building", color:COLORS[1]},
+    {id:"ICT", name:"ICT Lab", room:"Computer Lab, Block C", color:COLORS[6]}
+  ];
+  const teachers = ["Mr. Perera","Ms. Silva","Mr. Fernando","Mrs. Jayasinghe","Mr. Bandara"];
+  const a = ["Kasun Perera","Nimal Silva","Sahan Fernando","Tharushi Dias","Dilini Wickramasinghe","Ravindu Jayawardena",
+    "Sanduni Herath","Pasindu Rathnayake","Hiruni Gunasekara","Chamod Senanayake","Imesha Karunaratne","Yasiru Abeysekara",
+    "Nethmi Wijesinghe","Kavindu Rajapaksha","Sachini Ekanayake","Dinuka Samarasinghe","Oshadi Mendis","Lahiru Kumara"];
+  const b = ["Ishara Madushani","Janith Liyanage","Malsha Hettiarachchi","Thisara Gamage","Piumi Ranasinghe","Shehan Weerasinghe",
+    "Ama Nanayakkara","Vihanga De Silva","Rashmi Pathirana","Tharindu Bandara","Senuri Alwis","Buddhika Premadasa"];
+  const crd = [{uid:"AD 00 00 01", name:"Principal", role:"Admin", classId:""}]
+    .concat(teachers.map(n => ({uid:randUid(), name:n, role:"Teacher", classId:""})))
+    .concat(a.map(n => ({uid:randUid(), name:n, role:"Student", classId:"10A"})))
+    .concat(b.map(n => ({uid:randUid(), name:n, role:"Student", classId:"10B"})));
+
+  const slots = [["1","07:50","08:30"],["2","08:30","09:10"],["3","09:10","09:50"],["4","09:50","10:30"],
+                 ["Interval","10:30","10:50"],["5","10:50","11:30"],["6","11:30","12:10"],["7","12:10","12:50"],["8","12:50","13:30"]];
+  const subj = [["Maths",0],["ICT",1],["Science",2],["English",3],["Sinhala",4],["History",0],["Commerce",4],["Health",3]];
+  const tt = [];
+  cls.forEach((c,ci) => DAYS.forEach((day,di) => {
+    let k = di + ci*3;
+    slots.forEach(([p,s,e]) => {
+      if (p === "Interval") { tt.push({classId:c.id,day,period:p,start:s,end:e,subject:"Interval",teacher:""}); return; }
+      const [sub,t] = c.id === "ICT" ? ["ICT Practical",1] : subj[k % subj.length]; k++;
+      tt.push({classId:c.id,day,period:p,start:s,end:e,subject:sub,teacher:teachers[(t+ci)%teachers.length]});
+    });
+  }));
+  return {cls, crd, tt};
+}
+
+/* builds a believable live status for a class from its student cards */
+function demoLive(classId){
+  const now = clockNow();
+  const studs = cards.filter(c => c.role === "Student" && c.classId === classId);
+  const att = {};
+  studs.forEach((s,i) => {
+    let a = {status:"present", inTime: now - (40+i)*60000};
+    if (i === 3 || i === 11) a = {...a, status:"late", lateMin: 6 + i % 9};
+    if (i === 5) a = {...a, status:"out", outSince: now - 4*60000};
+    if (i === 8) a = {...a, status:"out", outSince: now - 12*60000};
+    if (i === 9 || i === 15) a = {status:"absent"};
+    att[s.uid] = a;
+  });
+  const n = i => studs[i] ? studs[i].name : "A student";
+  const hasStudents = studs.length > 0;
+  return {
+    session:{active: hasStudents, arrivedAt: now - 3*60000},
+    env:{gas:2980, motion:hasStudents, door:"locked", light:hasStudents, fan:hasStudents},
+    attendance: att,
+    log: hasStudents ? [
+      {t: now-12*60000, msg:`${n(8)} tapped out (break)`, type:"yellow"},
+      {t: now-6*60000, msg:`${n(3)} arrived late`, type:"orange"},
+      {t: now-4*60000, msg:`${n(5)} tapped out (break)`, type:"yellow"},
+      {t: now-3*60000, msg:"Teacher tapped in, class started", type:"blue"},
+      {t: now-3*60000, msg:"Lights and fan switched ON", type:"green"},
+      {t: now-2*60000, msg:"Unknown card tapped at door", type:"red"}
+    ] : [{t: now, msg:"No students registered for this class yet", type:"blue"}]
+  };
+}
+
+/* ---------------- DATA LOADING ---------------- */
+function timeoutSignal(ms){ const c = new AbortController(); setTimeout(() => c.abort(), ms); return c.signal; }
+function askConfirm(msg){
+  return new Promise(res => {
+    $("modalMsg").textContent = msg; $("modal").style.display = "grid";
+    const done = v => { $("modal").style.display = "none"; res(v); };
+    $("modalYes").onclick = () => done(true); $("modalNo").onclick = () => done(false);
+  });
+}
+async function fetchJSON(path, opts){
+  if (CLOUD) {
+    if (path === "/api/classes" || path === "/api/cards" || path === "/api/timetable") return asArray(await cloudGet(path.slice(5), []));
+    if (path === "/api/settings") return await cloudGet("settings", {});
+    if (path === "/api/lastuid") return (live[curClass] && live[curClass].lastUid) || {uid:"", t:0};
+    if (path.startsWith("/api/status")) return live[curClass] || emptyLive();
+    if (path.startsWith("/api/history")) {
+      const q = new URLSearchParams(path.split("?")[1]), days = +q.get("days") || 7;
+      const from = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
+      const snap = await fdb.ref("history/" + q.get("class")).orderByKey().startAt(from).get();
+      const rows = [];
+      snap.forEach(d => { Object.entries(d.val() || {}).forEach(([uid, r]) => rows.push({date: d.key, uid, ...r})); });
+      return rows;
+    }
+    throw new Error("unknown path " + path);
+  }
+  const r = await fetch(API + path, {...opts, signal: timeoutSignal(1500)});
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+async function post(path, body){
+  if (demo) return;
+  if (CLOUD) {
+    const node = {"/api/classes":"classes", "/api/cards":"cards", "/api/timetable":"timetable", "/api/settings":"settings"}[path];
+    try {
+      if (node) { await fdb.ref(node).set(clean(body)); if (node !== "classes") await fdb.ref("meta/" + node + "Updated").set(Date.now()); }
+      else cloudCommand(path);
+    } catch(e) { toast("❌ Cloud save failed: " + e.message); }
+    return;
+  }
+  try { await fetch(API + path, {method:"POST", headers:{"Content-Type":"application/json"}, body: body ? JSON.stringify(body) : undefined}); } catch(e){}
+}
+
+async function init(){
+  if (CLOUD) {
+    try {
+      [classes, cards, timetable] = await Promise.all([fetchJSON("/api/classes"), fetchJSON("/api/cards"), fetchJSON("/api/timetable")]);
+      if (!classes.length && user && user.role === "Admin") {      // first run: create the prototype room
+        classes = [{id:"10A", name:"Grade 10 A", room:"Room 12", color:COLORS[0]}];
+        await fdb.ref("classes").set(classes);
+      }
+    } catch(e) { toast("❌ Could not read the cloud database: " + e.message); }
+    curClass = (restore("cur") && classes.find(c => c.id === restore("cur"))) ? restore("cur") : (classes[0] && classes[0].id);
+    ttDay = DAYS.includes(WEEK[new Date().getDay()]) ? WEEK[new Date().getDay()] : "Monday";
+    fillSelects();
+    subscribeLive(curClass);
+    await refresh();
+    setInterval(refresh, REFRESH_MS);
+    return;
+  }
+  try {
+    [classes, cards, timetable] = await Promise.all([fetchJSON("/api/classes"), fetchJSON("/api/cards"), fetchJSON("/api/timetable")]);
+    connected = true;
+  } catch(e) {
+    demo = true;
+    const d = demoData();
+    classes = restore("classes") || d.cls;
+    cards = restore("cards") || d.crd;
+    timetable = restore("timetable") || d.tt;
+    store("classes", classes); store("cards", cards); store("timetable", timetable);
+  }
+  curClass = (restore("cur") && classes.find(c => c.id === restore("cur"))) ? restore("cur") : (classes[0] && classes[0].id);
+  ttDay = demo ? "Monday" : (DAYS.includes(WEEK[new Date().getDay()]) ? WEEK[new Date().getDay()] : "Monday");
+  fillSelects();
+  await refresh();
+  setInterval(refresh, REFRESH_MS);
+}
+
+async function refresh(){
+  if (!curClass) { renderAll(); return; }
+  if (demo) {
+    if (!live[curClass]) live[curClass] = demoLive(curClass);
+    const e = live[curClass].env;
+    if (demoLeak) e.gas = Math.min(4000, e.gas + 90 + Math.round(Math.random()*40));
+    else e.gas = e.gas > 3150 ? e.gas - 120 : Math.max(2850, Math.min(3150, e.gas + Math.round((Math.random()-.5)*40)));
+    if (Math.random() < .15 && live[curClass].session.active) e.motion = !e.motion;
+  } else if (CLOUD) {
+    live[curClass] = live[curClass] || emptyLive();
+    connected = Date.now() - (live[curClass].updatedAt || 0) < 15000;
+  } else {
+    try { live[curClass] = await fetchJSON("/api/status?class=" + encodeURIComponent(curClass)); connected = true; }
+    catch(e){ connected = false; }
+  }
+  checkEmergency();
+  renderAll();
+  if ($("page-twin").classList.contains("active")) updateTwin();
+}
+
+function saveClasses(){ store("classes", classes); post("/api/classes", classes); }
+function saveCards(){ store("cards", cards); post("/api/cards", cards); }
+function saveTimetable(){ store("timetable", timetable); post("/api/timetable", timetable); }
+
+/* ---------------- HELPERS ---------------- */
+const getClass = id => classes.find(c => c.id === id);
+const teacherCards = () => cards.filter(c => c.role === "Teacher");
+const classStudents = id => cards.filter(c => c.role === "Student" && c.classId === id);
+const todayName = () => WEEK[new Date(clockNow()).getDay()];
+const periodsFor = (cid, day) => timetable.filter(p => p.classId === cid && p.day === day).sort((a,b) => toMin(a.start)-toMin(b.start));
+function currentPeriod(cid = curClass){ const n = nowMin(); return periodsFor(cid, todayName()).find(p => n >= toMin(p.start) && n < toMin(p.end)); }
+function nextPeriod(){ const n = nowMin(); return periodsFor(curClass, todayName()).find(p => toMin(p.start) > n && p.period !== "Interval"); }
+
+function fillSelects(){
+  $("classSel").innerHTML = classes.length ? classes.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("") : `<option>No classes</option>`;
+  if (curClass) $("classSel").value = curClass;
+  const c = getClass(curClass);
+  $("roomText").textContent = c ? `📍 ${c.room}` : "Add a class in the Classes tab";
+  $("kClass").innerHTML = classes.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
+  $("cClassF").innerHTML = `<option value="">All classes</option>` + classes.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
+  $("fDay").innerHTML = DAYS.map(d => `<option>${d}</option>`).join("");
+  $("fTeacher").innerHTML = `<option value="">No teacher</option>` + teacherCards().map(t => `<option>${esc(t.name)}</option>`).join("");
+}
+
+/* ---------------- RENDER: LIVE ---------------- */
+function renderAll(){
+  $("connDot").className = "dot " + (demo ? "y" : connected ? "g" : "r");
+  $("connText").textContent = demo ? "Demo mode (ESP32 offline)" : CLOUD ? (connected ? "☁️ Cloud · ESP32 online" : "☁️ Cloud · ESP32 offline")
+    : connected ? "ESP32 connected" : "Connection lost";
+  $("demoTag").textContent = demo ? "DEMO DATA" : "";
+  const st = live[curClass];
+  if (!st) { $("students").innerHTML = `<div class="empty">No class selected.</div>`; return; }
+  renderSession(st); renderEnv(st); renderStudents(st); renderLog(st); renderAlerts(st);
+}
+
+function renderSession(st){
+  const p = currentPeriod(), s = st.session, card = $("sessionCard"), nx = nextPeriod();
+  $("sNext").textContent = nx ? `Next: Period ${nx.period}, ${nx.subject} (${nx.teacher || "no teacher"}) at ${nx.start}` : "No more periods today";
+  if (!p) {
+    card.classList.add("off");
+    $("sStatus").innerHTML = `<span class="dot"></span> No class scheduled now`;
+    $("sSubject").textContent = "Free time";
+    $("sTeacher").textContent = "Security mode active";
+    ["sPeriod","sTime","sArrived","sElapsed"].forEach(id => $(id).textContent = "-");
+    $("sProgress").style.width = "0";
+    return;
+  }
+  $("sSubject").textContent = p.subject;
+  $("sPeriod").textContent = p.period;
+  $("sTime").textContent = `${p.start} - ${p.end}`;
+  const total = toMin(p.end) - toMin(p.start), done = nowMin() - toMin(p.start);
+  $("sProgress").style.width = Math.min(100, done/total*100) + "%";
+  if (p.period === "Interval") {
+    card.classList.add("off");
+    $("sStatus").innerHTML = `<span class="dot y"></span> Interval`;
+    $("sTeacher").textContent = "Break time. Break limits are paused.";
+    $("sArrived").textContent = "-"; $("sElapsed").textContent = Math.floor(done) + " min";
+    return;
+  }
+  $("sTeacher").textContent = "👨‍🏫 " + (p.teacher || "No teacher assigned");
+  if (s.active) {
+    card.classList.remove("off");
+    $("sStatus").innerHTML = `<span class="dot g"></span> Class in progress`;
+    $("sArrived").textContent = hm(new Date(s.arrivedAt));
+    $("sElapsed").textContent = minsAgo(s.arrivedAt) + " min";
+  } else {
+    card.classList.add("off");
+    $("sStatus").innerHTML = `<span class="dot r"></span> Waiting for teacher`;
+    $("sArrived").textContent = "Not yet"; $("sElapsed").textContent = Math.floor(done) + " min";
+  }
+}
+
+function renderEnv(st){
+  const e = st.env, danger = e.gas >= GAS_THRESHOLD, warn = e.gas >= GAS_THRESHOLD - 300;
+  $("gasBar").style.width = Math.min(100, e.gas/4095*100) + "%";
+  $("gasBar").style.background = danger ? "var(--red)" : warn ? "var(--yellow)" : "var(--green)";
+  $("gasVal").textContent = e.gas; $("gasVal").style.color = danger ? "var(--red)" : "";
+  $("motion").innerHTML = e.motion ? `<span class="dot g"></span> Detected` : `<span class="dot"></span> None`;
+  const open = e.door === "open";
+  $("doorIcon").textContent = open ? "🔓" : "🔒";
+  $("doorBtn").textContent = open ? "🔒 Lock door" : "🔓 Unlock door";
+  $("lightT").classList.toggle("on", !!e.light);
+  $("fanT").classList.toggle("on", !!e.fan);
+}
+
+const initials = n => n.split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
+function studentView(a){
+  if (!a || a.status === "absent") return {cls:"absent", info:"Not arrived", key:"absent"};
+  if (a.status === "out") { const m = minsAgo(a.outSince); return {cls: m >= BREAK_LIMIT_MIN ? "overdue" : "out", info:`🚻 Out for ${m} min` + (m >= BREAK_LIMIT_MIN ? " ⚠️" : ""), key:"out"}; }
+  if (a.status === "late") return {cls:"late", info:`⏰ Late by ${a.lateMin} min`, key:"late"};
+  return {cls:"present", info:`✅ In since ${hm(new Date(a.inTime))}`, key:"present"};
+}
+
+function renderStudents(st){
+  const counts = {present:0,late:0,out:0,absent:0};
+  let html = "";
+  classStudents(curClass).forEach((s,i) => {
+    const v = studentView(st.attendance[s.uid]);
+    if (s.blocked) v.info += " · 🚫 card blocked";
+    counts[v.key]++;
+    if (filter !== "all" && filter !== v.key) return;
+    const col = COLORS[i % COLORS.length];
+    html += `<div class="stu ${v.cls}"><div class="avatar" style="background:${col}33;color:${col}">${esc(initials(s.name))}</div>
+      <div><div class="stu-name">${esc(s.name)}</div><div class="stu-info">${v.info}</div></div></div>`;
+  });
+  $("students").innerHTML = html || `<div class="empty">No students here. Register cards in the RFID Cards tab.</div>`;
+  $("cPresent").textContent = counts.present + counts.late;
+  $("cLate").textContent = counts.late; $("cOut").textContent = counts.out; $("cAbsent").textContent = counts.absent;
+}
+
+const LOGC = {blue:"var(--accent)",green:"var(--green)",yellow:"var(--yellow)",orange:"var(--orange)",red:"var(--red)"};
+function renderLog(st){
+  $("log").innerHTML = [...st.log].reverse().map(l => `<div class="log-item"><span class="log-time">${hm(new Date(l.t))}</span>
+    <span class="log-dot" style="background:${LOGC[l.type]||"var(--muted)"}"></span><span>${esc(l.msg)}</span></div>`).join("");
+}
+
+function renderAlerts(st){
+  const a = [], p = currentPeriod();
+  if (emg.active) a.push(["red", `🚨 EVACUATION IN PROGRESS: ${emg.safe.size} of ${emg.inside.length} students accounted for. Open the Digital Twin tab for the roll call.`]);
+  if (st.env.gas >= GAS_THRESHOLD) a.push(["red", `🔥 GAS ALERT: High gas level detected (${st.env.gas}). Evacuate and check the room.`]);
+  if (p && p.period !== "Interval" && !st.session.active && nowMin() - toMin(p.start) >= TEACHER_ALERT_MIN)
+    a.push(["yellow", `👨‍🏫 ${esc(p.teacher || "Teacher")} has not arrived for Period ${esc(p.period)} (${esc(p.subject)}).`]);
+  if (!p && st.env.motion) a.push(["red","🚨 INTRUSION: Motion detected while no class is scheduled."]);
+  classStudents(curClass).forEach(s => { const at = st.attendance[s.uid];
+    if (at && at.status === "out" && minsAgo(at.outSince) >= BREAK_LIMIT_MIN) a.push(["yellow", `🚻 ${esc(s.name)} has been out for ${minsAgo(at.outSince)} minutes.`]); });
+  $("alerts").innerHTML = a.map(([c,m]) => `<div class="alert ${c}">${m}</div>`).join("");
+  alertSound(a.length);
+}
+
+/* ---------------- RENDER: TIMETABLE ---------------- */
+function renderTimetable(){
+  const c = getClass(curClass);
+  $("ttTitle").textContent = c ? `Weekly Timetable: ${c.name}` : "Weekly Timetable";
+  $("days").innerHTML = DAYS.map(d => `<button class="chip ${d===ttDay?"active":""}" data-day="${d}">${d.slice(0,3)}</button>`).join("");
+  $("fDay").value = ttDay;
+  const cur = currentPeriod();
+  const rows = periodsFor(curClass, ttDay);
+  $("ttBody").innerHTML = rows.map(p => {
+    const isNow = cur === p, isBreak = p.period === "Interval";
+    return `<tr class="${isNow?"now":""} ${isBreak?"break":""}">
+      <td>${isBreak ? "☕" : "<b>" + esc(p.period) + "</b>"} ${isNow ? '<span class="tag" style="background:var(--accent);color:#fff;margin-left:6px">NOW</span>' : ""}</td>
+      <td>${p.start} - ${p.end}</td><td>${esc(p.subject)}</td><td>${esc(p.teacher) || "-"}</td>
+      <td style="text-align:right"><button class="btn ghost sm admin-only" data-del="${timetable.indexOf(p)}">Delete</button></td></tr>`;
+  }).join("") || `<tr><td colspan="5" class="empty">No periods for ${ttDay}. Add one below.</td></tr>`;
+}
+
+/* ---------------- RENDER: CLASSES ---------------- */
+function renderClasses(){
+  const html = classes.map(c => {
+    const studs = classStudents(c.id).length;
+    const periods = timetable.filter(p => p.classId === c.id && p.period !== "Interval").length;
+    const p = currentPeriod(c.id);
+    return `<div class="card class-card ${c.id===curClass?"current":""}" style="--cc:${c.color}">
+      <div><div class="cc-name">${esc(c.name)}</div><div class="cc-room">📍 ${esc(c.room)}</div></div>
+      <div class="cc-stats"><div><b>${studs}</b>Students</div><div><b>${periods}</b>Periods/week</div>
+        <div><b>${p && p.period !== "Interval" ? esc(p.subject) : "-"}</b>Now</div></div>
+      <div class="cc-actions">
+        <button class="btn sm" data-open="${esc(c.id)}">${c.id===curClass ? "✓ Viewing" : "Open"}</button>
+        <button class="btn ghost sm" data-edit="${esc(c.id)}">Edit</button>
+        <button class="btn ghost sm" data-delc="${esc(c.id)}">Delete</button>
+      </div></div>`;
+  }).join("");
+  $("classGrid").innerHTML = html + `<div class="card add-card">
+      <h3 id="clsFormTitle">➕ Add New Class</h3>
+      <input id="nName" placeholder="Class name (e.g. Grade 11 A)">
+      <input id="nRoom" placeholder="Room / location (e.g. Room 21)">
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="nColors">${COLORS.map((c,i) =>
+        `<button data-col="${c}" style="width:26px;height:26px;border-radius:50%;background:${c};border:2px solid ${i===0?"#fff":"transparent"}"></button>`).join("")}</div>
+      <label style="font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center">
+        <input type="checkbox" id="nCopy" style="width:auto"> Copy period times from current class</label>
+      <div style="display:flex;gap:8px"><button class="btn" id="nSave" style="flex:1">Save Class</button>
+        <button class="btn ghost" id="nCancel" style="display:none">Cancel</button></div>
+    </div>`;
+}
+
+let newColor = COLORS[0], editingClass = null;
+$("classGrid").onclick = async e => {
+  const t = e.target.closest("button"); if (!t) return;
+  if (t.dataset.col) { newColor = t.dataset.col; document.querySelectorAll("#nColors button").forEach(b => b.style.borderColor = b === t ? "#fff" : "transparent"); return; }
+  if (t.dataset.open) { switchClass(t.dataset.open); showPage("live"); return; }
+  if (t.dataset.edit) {
+    const c = getClass(t.dataset.edit); editingClass = c.id;
+    $("nName").value = c.name; $("nRoom").value = c.room; newColor = c.color;
+    $("clsFormTitle").textContent = "✏️ Edit " + c.name; $("nCancel").style.display = "";
+    document.querySelectorAll("#nColors button").forEach(b => b.style.borderColor = b.dataset.col === c.color ? "#fff" : "transparent");
+    $("nName").focus(); return;
+  }
+  if (t.dataset.delc) {
+    const c = getClass(t.dataset.delc), n = classStudents(c.id).length;
+    if (!await askConfirm(`Delete ${c.name}?` + (n ? `\n${n} student card(s) will be left without a class.` : ""))) return;
+    classes = classes.filter(x => x.id !== c.id);
+    timetable = timetable.filter(p => p.classId !== c.id);
+    cards.forEach(k => { if (k.classId === c.id) k.classId = ""; });
+    if (curClass === c.id) curClass = classes[0] ? classes[0].id : null;
+    saveClasses(); saveTimetable(); saveCards(); fillSelects(); renderClasses(); refresh();
+    toast(`🗑️ ${c.name} deleted`); return;
+  }
+  if (t.id === "nCancel") { editingClass = null; renderClasses(); return; }
+  if (t.id === "nSave") {
+    const name = $("nName").value.trim(), room = $("nRoom").value.trim();
+    if (!name) { toast("⚠️ Enter a class name"); return; }
+    if (editingClass) {
+      Object.assign(getClass(editingClass), {name, room: room || "-", color:newColor});
+      toast(`✅ ${name} updated`); editingClass = null;
+    } else {
+      let id = name.replace(/^grade\s*/i,"").replace(/\s+/g,"").toUpperCase().slice(0,8) || "C";
+      while (getClass(id)) id += "X";
+      classes.push({id, name, room: room || "-", color:newColor});
+      if ($("nCopy").checked && curClass) {
+        timetable.filter(p => p.classId === curClass).forEach(p => timetable.push({...p, classId:id, subject: p.period === "Interval" ? "Interval" : "Free", teacher:""}));
+        saveTimetable();
+      }
+      toast(`✅ ${name} added`);
+    }
+    saveClasses(); fillSelects(); renderClasses();
+  }
+};
+
+/* ---------------- RFID CARDS ---------------- */
+function renderCards(){
+  const q = $("cSearch").value.trim().toLowerCase(), rf = $("cRoleF").value, cf = $("cClassF").value;
+  const list = cards.filter(c => (!rf || c.role === rf) && (!cf || c.classId === cf) &&
+    (!q || c.name.toLowerCase().includes(q) || c.uid.toLowerCase().includes(q)));
+  $("cardCount").textContent = `(${list.length} of ${cards.length})`;
+  const tag = {Teacher:"rgba(124,92,255,.2);color:#b7a6ff", Student:"rgba(79,140,255,.15);color:#9fc0ff", Admin:"rgba(255,92,108,.15);color:#ffb3bb"};
+  $("cardBody").innerHTML = list.map(c => `<tr class="${c.blocked?"blocked":""}" ${c.uid===editingUid?'style="background:rgba(79,140,255,.08)"':""}>
+    <td><b>${esc(c.name)}</b></td>
+    <td><span class="tag" style="background:${tag[c.role]}">${c.role}</span></td>
+    <td>${c.role === "Student" ? esc(getClass(c.classId)?.name || "⚠️ No class") : "-"}</td>
+    <td style="font-family:monospace">${esc(c.uid)}</td>
+    <td>${c.blocked ? '<span class="tag" style="background:rgba(255,92,108,.15);color:#ffb3bb">🚫 Blocked</span>' : '<span class="tag" style="background:rgba(46,204,113,.15);color:#7ee2a8">Active</span>'}</td>
+    <td><div class="row-actions"><button class="btn ghost sm" data-bk="${esc(c.uid)}">${c.blocked ? "Unblock" : "Block"}</button>
+      <button class="btn ghost sm" data-ek="${esc(c.uid)}">Edit</button>
+      <button class="btn ghost sm" data-dk="${esc(c.uid)}">Delete</button></div></td></tr>`).join("")
+    || `<tr><td colspan="6" class="empty">No cards found.</td></tr>`;
+}
+
+function normUid(u){ return u.toUpperCase().replace(/[^0-9A-F]/g,"").match(/.{1,2}/g)?.join(" ") || ""; }
+
+function setScan(mode, uid){
+  const box = $("scanbox");
+  box.className = "scanbox " + (mode === "wait" ? "waiting" : mode === "got" ? "got" : "");
+  $("scanIcon").innerHTML = mode === "wait" ? `<span class="waves">📡</span>` : mode === "got" ? "✅" : "💳";
+  if (uid !== undefined) $("scanUid").textContent = uid;
+  $("scanMsg").textContent = mode === "wait" ? "Waiting... tap the card on the RFID reader now."
+    : mode === "got" ? "Card detected! Fill in the details and save." : "Press Scan, then tap the card on the RFID reader.";
+  $("scanBtn").textContent = mode === "wait" ? "✖ Cancel" : "📡 Scan Card";
+}
+
+function stopScan(){ clearInterval(scanTimer); clearTimeout(scanTimer); scanTimer = null; }
+
+$("scanBtn").onclick = async () => {
+  if (scanTimer) { stopScan(); setScan("idle"); return; }
+  setScan("wait", "-- -- -- --");
+  if (demo) {                        // demo: pretend a card is tapped after 2 seconds
+    scanTimer = setTimeout(() => { scanTimer = null; gotUid(randUid()); }, 2000);
+    return;
+  }
+  const since = Date.now();
+  let base = 0;
+  try { base = (await fetchJSON("/api/lastuid")).t || 0; } catch(e){}
+  scanTimer = setInterval(async () => {
+    if (Date.now() - since > 20000) { stopScan(); setScan("idle"); toast("⏱️ No card detected. Try again."); return; }
+    try { const r = await fetchJSON("/api/lastuid"); if (r.uid && r.t > base) { stopScan(); gotUid(r.uid); } } catch(e){}
+  }, 700);
+};
+
+function gotUid(uid){
+  uid = normUid(uid);
+  const existing = cards.find(c => c.uid === uid);
+  setScan("got", uid);
+  $("kUid").value = uid;
+  if (existing && existing.uid !== editingUid) {
+    $("scanMsg").textContent = `⚠️ This card is already registered to ${existing.name}.`;
+    $("scanbox").className = "scanbox waiting";
+  } else $("kName").focus();
+}
+
+$("kRole").onchange = () => { $("kClassField").style.display = $("kRole").value === "Student" ? "" : "none"; };
+
+function resetCardForm(){
+  editingUid = null; stopScan(); setScan("idle", "-- -- -- --");
+  ["kUid","kName"].forEach(id => $(id).value = "");
+  $("kRole").value = "Student"; $("kRole").onchange();
+  if (curClass) $("kClass").value = curClass;
+  $("cardFormTitle").textContent = "Register New Card";
+  $("saveCard").textContent = "💾 Save Card";
+  $("cancelEdit").style.display = "none";
+}
+
+$("saveCard").onclick = () => {
+  const uid = normUid($("kUid").value), name = $("kName").value.trim(), role = $("kRole").value;
+  const classId = role === "Student" ? $("kClass").value : "";
+  if (uid.split(" ").length < 4) { toast("⚠️ Scan a card or enter a valid UID (4+ bytes)"); return; }
+  if (!name) { toast("⚠️ Enter a name"); return; }
+  if (role === "Student" && !classId) { toast("⚠️ Add a class first"); return; }
+  const dup = cards.find(c => c.uid === uid && c.uid !== editingUid);
+  if (dup) { toast(`⚠️ UID already used by ${dup.name}`); return; }
+  if (editingUid) {
+    Object.assign(cards.find(c => c.uid === editingUid), {uid, name, role, classId});
+    toast(`✅ ${name} updated`);
+  } else {
+    cards.push({uid, name, role, classId});
+    toast(`✅ ${name} registered`);
+  }
+  saveCards(); fillSelects(); resetCardForm(); renderCards();
+  if (live[curClass] && demo && role === "Student" && classId === curClass) live[curClass].attendance[uid] = {status:"absent"};
+};
+
+$("cancelEdit").onclick = () => { resetCardForm(); renderCards(); };
+
+$("cardBody").onclick = async e => {
+  const t = e.target.closest("button"); if (!t) return;
+  if (t.dataset.bk) {
+    const c = cards.find(k => k.uid === t.dataset.bk);
+    if (!c.blocked && !await askConfirm(`Block ${c.name}'s card?\nUse this if the card is lost or stolen. It will not open the door until unblocked.`)) return;
+    c.blocked = !c.blocked;
+    saveCards(); renderCards();
+    addLog(`${c.name}'s card ${c.blocked ? "blocked" : "unblocked"} by ${user ? user.name : "admin"}`, c.blocked ? "red" : "green");
+    toast(c.blocked ? `🚫 ${c.name}'s card blocked` : `✅ ${c.name}'s card unblocked`);
+    return;
+  }
+  if (t.dataset.ek) {
+    const c = cards.find(k => k.uid === t.dataset.ek); editingUid = c.uid;
+    $("kUid").value = c.uid; $("kName").value = c.name; $("kRole").value = c.role; $("kRole").onchange();
+    if (c.classId) $("kClass").value = c.classId;
+    setScan("idle", c.uid);
+    $("cardFormTitle").textContent = "Edit Card: " + c.name;
+    $("saveCard").textContent = "💾 Update Card"; $("cancelEdit").style.display = "";
+    renderCards(); window.scrollTo({top:0, behavior:"smooth"});
+  }
+  if (t.dataset.dk) {
+    const c = cards.find(k => k.uid === t.dataset.dk);
+    if (!await askConfirm(`Delete card for ${c.name}?\nThis card will no longer open the door.`)) return;
+    cards = cards.filter(k => k.uid !== c.uid);
+    if (editingUid === c.uid) resetCardForm();
+    saveCards(); fillSelects(); renderCards(); toast(`🗑️ ${c.name}'s card deleted`);
+  }
+};
+["cSearch","cRoleF","cClassF"].forEach(id => $(id).addEventListener("input", renderCards));
+
+/* ---------------- NAV + EVENTS ---------------- */
+function showPage(name){
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x.dataset.page === name));
+  document.querySelectorAll(".page").forEach(x => x.classList.toggle("active", x.id === "page-" + name));
+  if (name === "timetable") renderTimetable();
+  if (name === "classes") renderClasses();
+  if (name === "cards") { resetCardForm(); renderCards(); }
+  if (name === "reports") renderReports();
+  if (name === "twin") { buildTwin(); updateTwin(); }
+  if (name === "settings") fillSettings();
+  if (name !== "cards") stopScan();
+}
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => showPage(t.dataset.page));
+
+function switchClass(id){
+  if (emg.active) { toast("⚠️ End the emergency before switching class"); $("classSel").value = curClass; return; }
+  curClass = id; store("cur", id); filter = "all";
+  subscribeLive(id);
+  document.querySelectorAll("#filters .chip").forEach(c => c.classList.toggle("active", c.dataset.f === "all"));
+  fillSelects(); refresh();
+  if ($("page-timetable").classList.contains("active")) renderTimetable();
+  if ($("page-classes").classList.contains("active")) renderClasses();
+  if ($("page-reports").classList.contains("active")) renderReports();
+  if ($("page-twin").classList.contains("active")) { buildTwin(); updateTwin(); }
+}
+$("classSel").onchange = e => switchClass(e.target.value);
+
+$("filters").onclick = e => {
+  if (!e.target.dataset.f) return;
+  filter = e.target.dataset.f;
+  document.querySelectorAll("#filters .chip").forEach(c => c.classList.toggle("active", c === e.target));
+  if (live[curClass]) renderStudents(live[curClass]);
+};
+
+$("days").onclick = e => { if (e.target.dataset.day) { ttDay = e.target.dataset.day; renderTimetable(); } };
+$("ttBody").onclick = e => {
+  if (e.target.dataset.del === undefined) return;
+  timetable.splice(Number(e.target.dataset.del), 1); saveTimetable(); renderTimetable();
+};
+$("addPeriod").onclick = () => {
+  if (!curClass) { toast("⚠️ Add a class first"); return; }
+  const p = {classId:curClass, day:$("fDay").value, period:$("fPeriod").value.trim(), start:$("fStart").value, end:$("fEnd").value,
+             subject:$("fSubject").value.trim(), teacher:$("fTeacher").value};
+  if (!p.period || !p.start || !p.end || !p.subject) { toast("⚠️ Fill period, start, end and subject"); return; }
+  if (toMin(p.end) <= toMin(p.start)) { toast("⚠️ End time must be after start time"); return; }
+  const clash = periodsFor(curClass, p.day).find(x => toMin(p.start) < toMin(x.end) && toMin(p.end) > toMin(x.start));
+  if (clash) { toast(`⚠️ Overlaps with Period ${clash.period} (${clash.start} - ${clash.end})`); return; }
+  timetable.push(p); ttDay = p.day;
+  ["fPeriod","fStart","fEnd","fSubject"].forEach(id => $(id).value = "");
+  saveTimetable(); renderTimetable(); toast("✅ Period added");
+};
+
+function addLog(msg,type){ const st = live[curClass]; if (!st) return; st.log.push({t:clockNow(), msg, type}); renderLog(st); }
+$("lightT").onclick = () => { const e = live[curClass]?.env; if (!e) return; e.light = !e.light; post(`/api/relay?dev=light&state=${+e.light}&class=${curClass}`); addLog("Lights switched " + (e.light?"ON":"OFF") + " from dashboard","green"); renderEnv(live[curClass]); };
+$("fanT").onclick = () => { const e = live[curClass]?.env; if (!e) return; e.fan = !e.fan; post(`/api/relay?dev=fan&state=${+e.fan}&class=${curClass}`); addLog("Fan switched " + (e.fan?"ON":"OFF") + " from dashboard","green"); renderEnv(live[curClass]); };
+$("doorBtn").onclick = () => {
+  const e = live[curClass]?.env; if (!e) return;
+  const open = e.door !== "open"; e.door = open ? "open" : "locked";
+  post(`/api/door?action=${open?"open":"lock"}&class=${curClass}`);
+  addLog("Door " + (open ? "opened" : "locked") + " from dashboard","blue"); renderEnv(live[curClass]);
+};
+
+/* ---------------- LOGIN ----------------
+   ESP32: POST /api/login {user,pass} -> {ok:true, role:"Admin"|"Teacher", name}
+   The ESP32 must also check the login on every API call. Hiding tabs here is only for the UI. */
+const DEMO_USERS = {
+  admin:   {pass:"admin123",   role:"Admin",   name:"Admin"},
+  teacher: {pass:"teacher123", role:"Teacher", name:"Mr. Perera"}
+};
+let user = null, started = false;
+
+function applyUser(){
+  $("login").classList.add("hide");
+  document.body.classList.toggle("role-teacher", user.role !== "Admin");
+  $("userName").textContent = (user.role === "Admin" ? "🛡️ " : "👨‍🏫 ") + user.name;
+  if (!started) { started = true; loadSettings(); init(); }
+}
+
+async function doLogin(){
+  const u = $("lUser").value.trim().toLowerCase(), pw = $("lPass").value;
+  $("lErr").textContent = "";
+  let res = null;
+  if (CLOUD) {
+    let cred;
+    try { cred = await fauth.signInWithEmailAndPassword(u, pw); }
+    catch(err) { $("lErr").textContent = "❌ Wrong email or password"; $("lPass").value = ""; return; }
+    const prof = await cloudProfile(cred.user);
+    if (!prof) { await refuseAccount(); return; }
+    if (!user) { user = prof; applyUser(); }
+    return;
+  }
+  try {
+    const r = await fetch(API + "/api/login", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({user:u, pass:pw}), signal:timeoutSignal(1500)});
+    if (!r.ok) throw new Error("no ESP32");
+    const j = await r.json();
+    if (typeof j.ok !== "boolean") throw new Error("not the ESP32 API");
+    res = j;
+  } catch(err) {                      // ESP32 offline: use demo accounts
+    const d = DEMO_USERS[u];
+    res = d && d.pass === pw ? {ok:true, role:d.role, name:d.name} : {ok:false};
+  }
+  if (!res.ok) { $("lErr").textContent = "❌ Wrong username or password"; $("lPass").value = ""; return; }
+  user = {role:res.role, name:res.name};
+  try { sessionStorage.setItem("sc_user", JSON.stringify(user)); } catch(err){}
+  applyUser();
+}
+$("loginBtn").onclick = doLogin;
+["lUser","lPass"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); }));
+
+async function cloudProfile(fu){
+  // required: users/<uid> = {role:"Admin"|"Teacher", name}. Accounts without a role are refused.
+  const p = await cloudGet("users/" + fu.uid, null).catch(() => null);
+  if (!p || (p.role !== "Admin" && p.role !== "Teacher")) return null;
+  return {role: p.role, name: p.name || fu.email.split("@")[0]};
+}
+async function refuseAccount(){
+  await fauth.signOut();
+  $("lErr").textContent = "❌ This account has no dashboard role. Add it under users/ in the database.";
+}
+$("logoutBtn").onclick = () => {
+  if (CLOUD) { fauth.signOut().then(() => location.reload()); return; }
+  try { sessionStorage.removeItem("sc_user"); } catch(e){}
+  location.reload();
+};
+
+function checkAuth(){
+  if (CLOUD) {
+    $("lHint").innerHTML = "☁️ Cloud mode. Log in with the email and password created in Firebase Authentication.";
+    document.querySelector('label[for], #loginForm .field label').textContent = "Email";
+    $("lUser").placeholder = "you@example.com";
+    fauth.onAuthStateChanged(async fu => {
+      if (fu && !user) {
+        const prof = await cloudProfile(fu);
+        if (!prof) { await refuseAccount(); return; }
+        if (!user) { user = prof; applyUser(); }
+      }
+      else if (!fu) $("lUser").focus();
+    });
+    return;
+  }
+  try { user = JSON.parse(sessionStorage.getItem("sc_user")); } catch(e){ user = null; }
+  if (user) applyUser(); else $("lUser").focus();
+}
+
+/* ---------------- ALERT SOUND ---------------- */
+let soundOn = restore("sound") !== false, lastAlertCount = 0, audioCtx = null;
+function beep(){
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    [0, .25, .5].forEach(t => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = "square"; o.frequency.value = 880;
+      g.gain.setValueAtTime(.08, audioCtx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(.001, audioCtx.currentTime + t + .18);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(audioCtx.currentTime + t); o.stop(audioCtx.currentTime + t + .2);
+    });
+  } catch(e){}
+}
+function alertSound(n){ if (soundOn && n > lastAlertCount) beep(); lastAlertCount = n; }
+function paintSound(){ $("soundBtn").textContent = soundOn ? "🔔" : "🔕"; $("soundBtn").classList.toggle("off", !soundOn); }
+$("soundBtn").onclick = () => { soundOn = !soundOn; store("sound", soundOn); paintSound(); if (soundOn) beep(); toast(soundOn ? "🔔 Alert sound on" : "🔕 Alert sound off"); };
+paintSound();
+
+/* ---------------- SETTINGS ----------------
+   ESP32: GET/POST /api/settings, POST /api/telegram/test */
+let settings = {breakLimit:10, lateAfter:10, teacherAlert:5, gas:3600, doorSec:5,
+                tg:{token:"", chat:"", waPhone:"", waKey:"", gas:true, intrusion:true, teacher:true, brk:false, blocked:true}};
+async function loadSettings(){
+  const saved = restore("settings");
+  if (saved) settings = {...settings, ...saved, tg:{...settings.tg, ...(saved.tg || {})}};
+  try { const r = await fetchJSON("/api/settings"); settings = {...settings, ...r, tg:{...settings.tg, ...(r.tg || {})}}; } catch(e){}
+  applySettings();
+}
+function applySettings(){ BREAK_LIMIT_MIN = settings.breakLimit; GAS_THRESHOLD = settings.gas; TEACHER_ALERT_MIN = settings.teacherAlert; }
+function fillSettings(){
+  $("tgToken").value = settings.tg.token; $("tgChat").value = settings.tg.chat;
+  $("waPhone").value = settings.tg.waPhone || ""; $("waKey").value = settings.tg.waKey || "";
+  $("tgGas").checked = settings.tg.gas; $("tgIntr").checked = settings.tg.intrusion; $("tgTeach").checked = settings.tg.teacher;
+  $("tgBreak").checked = settings.tg.brk; $("tgBlock").checked = settings.tg.blocked;
+  $("sBreak").value = settings.breakLimit; $("sLate").value = settings.lateAfter; $("setTeacher").value = settings.teacherAlert;
+  $("sGas").value = settings.gas; $("sDoor").value = settings.doorSec;
+}
+$("saveSet").onclick = () => {
+  const num = (id, min, max) => Math.min(max, Math.max(min, parseInt($(id).value) || min));
+  settings = {breakLimit:num("sBreak",1,60), lateAfter:num("sLate",0,40), teacherAlert:num("setTeacher",1,40), gas:num("sGas",500,4095), doorSec:num("sDoor",2,30),
+    tg:{token:$("tgToken").value.trim(), chat:$("tgChat").value.trim(), waPhone:$("waPhone").value.trim(), waKey:$("waKey").value.trim(), gas:$("tgGas").checked, intrusion:$("tgIntr").checked,
+        teacher:$("tgTeach").checked, brk:$("tgBreak").checked, blocked:$("tgBlock").checked}};
+  applySettings(); store("settings", settings); post("/api/settings", settings); fillSettings();
+  if (live[curClass]) renderAll();
+  toast("✅ Settings saved");
+};
+$("testTg").onclick = async () => {
+  const tgOk = $("tgToken").value.trim() && $("tgChat").value.trim(), waOk = $("waPhone").value.trim() && $("waKey").value.trim();
+  if (!tgOk && !waOk) { toast("⚠️ Enter the Telegram or WhatsApp details first"); return; }
+  if (demo) { toast("📨 Demo mode: the ESP32 would send a test message now"); return; }
+  if (CLOUD) { cloudCommand("/api/telegram/test"); toast("📨 Test sent to the ESP32. Check Telegram and WhatsApp."); return; }
+  try { await fetch(API + "/api/telegram/test", {method:"POST"}); toast("📨 Test message sent. Check Telegram and WhatsApp."); }
+  catch(e){ toast("❌ Could not reach the ESP32"); }
+};
+
+/* ---------------- REPORTS ----------------
+   ESP32: GET /api/history?class=<id>&days=<n> -> [{date:"2026-11-20", uid, status:"present"|"late"|"absent", lateMin, breaks}] */
+let repDays = 7, repRows = [];
+function seeded(str){ let h = 2166136261; for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 10000) / 10000; }
+function schoolDays(n){
+  const out = [], d = new Date(clockNow()); d.setHours(12,0,0,0);
+  while (out.length < Math.ceil(n * 5 / 7)) { d.setDate(d.getDate() - 1); if (d.getDay() > 0 && d.getDay() < 6) out.unshift(d.toISOString().slice(0,10)); }
+  return out;
+}
+function demoHistory(classId, n){
+  const rows = [];
+  schoolDays(n).forEach(date => classStudents(classId).forEach((s, i) => {
+    const r = seeded(s.uid + date), weak = i % 7 === 4 ? .18 : 0;      // a few students with weaker attendance
+    const status = r < .06 + weak ? "absent" : r < .16 + weak ? "late" : "present";
+    rows.push({date, uid:s.uid, status, lateMin: status === "late" ? 3 + Math.floor(seeded(date + s.uid) * 20) : 0,
+               breaks: status === "absent" ? 0 : Math.floor(seeded(s.name + date) * 3)});
+  }));
+  return rows;
+}
+async function renderReports(){
+  const c = getClass(curClass);
+  $("repTitle").textContent = c ? `Attendance Report: ${c.name}` : "Attendance Report";
+  if (!curClass) return;
+  if (demo) repRows = demoHistory(curClass, repDays);
+  else { try { repRows = await fetchJSON(`/api/history?class=${encodeURIComponent(curClass)}&days=${repDays}`); } catch(e){ repRows = []; } }
+
+  const studs = classStudents(curClass);
+  const dates = [...new Set(repRows.map(r => r.date))].sort();
+  const attended = repRows.filter(r => r.status !== "absent").length;
+  const avg = repRows.length ? attended / repRows.length * 100 : 0;
+  $("kAvg").textContent = avg.toFixed(1) + "%";
+  $("kAvg").style.color = avg >= 90 ? "var(--green)" : avg >= 80 ? "var(--yellow)" : "var(--red)";
+  $("kAvgNote").textContent = avg >= 90 ? "✅ Good" : avg >= 80 ? "⚠️ Needs attention" : "❌ Low";
+  $("kAvgNote").style.color = $("kAvg").style.color;
+  $("kLate").textContent = repRows.filter(r => r.status === "late").length;
+  $("kAbs").textContent = repRows.filter(r => r.status === "absent").length;
+  const brk = repRows.reduce((a, r) => a + (r.breaks || 0), 0);
+  $("kBrk").textContent = brk;
+  $("kBrkNote").textContent = dates.length ? `about ${(brk / dates.length).toFixed(1)} per day` : "";
+
+  drawChart(dates.map(d => {
+    const day = repRows.filter(r => r.date === d);
+    return {d, v: day.length ? day.filter(r => r.status !== "absent").length / day.length * 100 : 0};
+  }));
+
+  const summary = studs.map(s => {
+    const mine = repRows.filter(r => r.uid === s.uid);
+    const pres = mine.filter(r => r.status === "present").length, late = mine.filter(r => r.status === "late").length;
+    const abs = mine.filter(r => r.status === "absent").length, b = mine.reduce((a, r) => a + (r.breaks || 0), 0);
+    return {s, pres, late, abs, b, pct: mine.length ? (pres + late) / mine.length * 100 : 0, days: mine.length};
+  }).sort((a, b) => a.pct - b.pct);
+  $("repBody").innerHTML = summary.map(r => {
+    const col = r.pct >= 90 ? "var(--green)" : r.pct >= 80 ? "var(--yellow)" : "var(--red)";
+    return `<tr><td><b>${esc(r.s.name)}</b>${r.s.blocked ? ' <span class="tag" style="background:rgba(255,92,108,.15);color:#ffb3bb">🚫</span>' : ""}</td>
+      <td><span class="pct" style="background:${col}22;color:${col}">${r.pct.toFixed(0)}%</span><span class="minibar"><i style="width:${r.pct}%;background:${col}"></i></span></td>
+      <td>${r.pres}</td><td>${r.late}</td><td>${r.abs}</td><td>${r.b}</td></tr>`;
+  }).join("") || `<tr><td colspan="6" class="empty">No attendance data for this class yet.</td></tr>`;
+  repSummary = summary;
+}
+let repSummary = [];
+
+function drawChart(pts){
+  const svg = $("repChart"), W = svg.clientWidth || 800, H = 220, L = 36, B = 28, T = 10;
+  if (!pts.length) { svg.innerHTML = `<text x="${W/2}" y="${H/2}" fill="#8b98a8" text-anchor="middle" font-size="13">No data</text>`; return; }
+  const bw = (W - L - 10) / pts.length, y = v => T + (H - T - B) * (1 - v / 100);
+  let g = "";
+  [0, 50, 80, 100].forEach(v => g += `<line x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="${v === 80 ? "#f5b83d55" : "#2a3340"}" ${v === 80 ? 'stroke-dasharray="4 4"' : ""}/>
+    <text x="${L - 6}" y="${y(v) + 4}" fill="#8b98a8" font-size="11" text-anchor="end">${v}%</text>`);
+  const step = Math.ceil(pts.length / 12);
+  pts.forEach((p, i) => {
+    const x = L + i * bw + bw * .18, w = bw * .64, col = p.v >= 90 ? "#2ecc71" : p.v >= 80 ? "#f5b83d" : "#ff5c6c";
+    g += `<rect x="${x}" y="${y(p.v)}" width="${w}" height="${y(0) - y(p.v)}" rx="3" fill="${col}"><title>${p.d}: ${p.v.toFixed(1)}%</title></rect>`;
+    if (i % step === 0) g += `<text x="${x + w/2}" y="${H - 8}" fill="#8b98a8" font-size="11" text-anchor="middle">${p.d.slice(8)}/${p.d.slice(5,7)}</text>`;
+  });
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = g;
+}
+
+$("repRange").onclick = e => {
+  if (!e.target.dataset.r) return;
+  repDays = +e.target.dataset.r;
+  document.querySelectorAll("#repRange .chip").forEach(c => c.classList.toggle("active", c === e.target));
+  renderReports();
+};
+
+$("exportBtn").onclick = () => {
+  if (!repRows.length) { toast("⚠️ No data to export"); return; }
+  const c = getClass(curClass), dates = [...new Set(repRows.map(r => r.date))].sort();
+  const code = {present:"P", late:"L", absent:"A"};
+  const q = v => `"${String(v).replace(/"/g, '""')}"`;
+  const lines = [[`Attendance Report: ${c.name}`], [`From ${dates[0]} to ${dates[dates.length - 1]}`], ["P = Present, L = Late, A = Absent"], [],
+    ["Student", "Card UID", ...dates, "Present", "Late", "Absent", "Breaks", "Attendance %"]];
+  repSummary.slice().sort((a, b) => a.s.name.localeCompare(b.s.name)).forEach(r => {
+    const byDate = Object.fromEntries(repRows.filter(x => x.uid === r.s.uid).map(x => [x.date, code[x.status]]));
+    lines.push([r.s.name, r.s.uid, ...dates.map(d => byDate[d] || "-"), r.pres, r.late, r.abs, r.b, r.pct.toFixed(1)]);
+  });
+  const csv = "﻿" + lines.map(l => l.map(q).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"}));
+  a.download = `attendance_${c.name.replace(/\s+/g, "_")}_${dates[0]}_to_${dates[dates.length - 1]}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+  toast("⬇️ Report downloaded. Open it with Excel.");
+};
+
+/* ================================================================
+   DIGITAL TWIN: a live map of the classroom built from sensor data
+   EMERGENCY ROLL CALL: on a gas alert (or manual trigger) the system
+   unlocks the door, starts ventilation, and tracks which students
+   have tapped their card at the assembly-point reader.
+   ESP32: POST /api/emergency?state=1|0&class=<id>
+          status JSON adds  emergency:{active, startedAt, reason, safe:[uids]}
+   ================================================================ */
+let demoLeak = false;
+const emg = {active:false, startedAt:0, reason:"", inside:[], safe:new Map(), lastSeen:{}, timer:null};
+const SEAT_COLS = 6;
+const SC = {present:"#2ecc71", late:"#ff8a3d", out:"#f5b83d", overdue:"#ff5c6c", absent:"#2a3340"};
+
+function checkEmergency(){
+  const st = live[curClass]; if (!st) return;
+  if (!demo && st.emergency) {            // ESP32 is the source of truth when connected
+    if (st.emergency.active && !emg.active) startEmergency(st.emergency.reason || "Gas leak", false, st.emergency.startedAt);
+    if (emg.active) st.emergency.safe.forEach(u => { if (!emg.safe.has(u)) emg.safe.set(u, clockNow()); });
+    if (!st.emergency.active && emg.active) endEmergency(false);
+    return;
+  }
+  if (!emg.active && st.env.gas >= GAS_THRESHOLD) startEmergency("Gas leak detected (" + st.env.gas + ")", true);
+}
+
+function startEmergency(reason, sendToEsp = true, startedAt){
+  const st = live[curClass]; if (!st || emg.active) return;
+  emg.active = true; emg.reason = reason; emg.startedAt = startedAt || clockNow(); emg.safe = new Map(); emg.lastSeen = {};
+  emg.inside = classStudents(curClass).filter(s => { const a = st.attendance[s.uid]; return a && a.status !== "absent"; }).map(s => s.uid);
+  classStudents(curClass).forEach(s => { const a = st.attendance[s.uid]; if (a && a.status === "out") emg.lastSeen[s.uid] = "Washroom"; });
+  st.env.door = "open"; st.env.fan = true; st.env.light = true;
+  if (sendToEsp) post(`/api/emergency?state=1&class=${curClass}`);
+  addLog("🚨 EMERGENCY: " + reason + ". Door unlocked, fan on, buzzer on.", "red");
+  addLog("Roll call started for " + emg.inside.length + " students", "red");
+  document.body.classList.add("emergency");
+  beep(); setTimeout(beep, 900);
+  if (demo) {                            // demo: students tap at the assembly point one by one
+    clearInterval(emg.timer);
+    emg.timer = setInterval(() => {
+      const left = emg.inside.filter(u => !emg.safe.has(u) && !emg.lastSeen[u]);
+      if (!left.length || Math.random() < .25) return;
+      markSafe(left[Math.floor(Math.random() * left.length)], "card");
+    }, 1300);
+  }
+  if (!$("page-twin").classList.contains("active")) toast("🚨 Emergency! Open the Digital Twin tab for the roll call");
+  renderAll(); if ($("page-twin").classList.contains("active")) { buildTwin(); updateTwin(); }
+}
+
+function markSafe(uid, how){
+  if (!emg.active || emg.safe.has(uid)) return;
+  emg.safe.set(uid, clockNow());
+  const s = cards.find(c => c.uid === uid);
+  addLog(`✅ ${s ? s.name : uid} safe at assembly point${how === "manual" ? " (marked by teacher)" : ""}`, "green");
+  if (how === "manual") post(`/api/emergency/safe?uid=${encodeURIComponent(uid)}&class=${curClass}`);
+  if ($("page-twin").classList.contains("active")) updateTwin();
+  if (emg.safe.size === emg.inside.length) { addLog("🎉 All students accounted for", "green"); toast("🎉 All students accounted for!"); }
+}
+
+function endEmergency(sendToEsp = true){
+  clearInterval(emg.timer);
+  const mins = Math.max(0, Math.round((clockNow() - emg.startedAt) / 60000));
+  addLog(`Emergency ended after ${mins} min. ${emg.safe.size}/${emg.inside.length} accounted for.`, "blue");
+  emg.active = false; demoLeak = false;
+  const st = live[curClass]; if (st && demo) { st.env.gas = 3100; st.env.door = "locked"; }
+  if (sendToEsp) post(`/api/emergency?state=0&class=${curClass}`);
+  document.body.classList.remove("emergency");
+  renderAll(); if ($("page-twin").classList.contains("active")) { buildTwin(); updateTwin(); }
+}
+
+/* ---------- map drawing ---------- */
+function seatPos(i, n){
+  const rows = Math.ceil(n / SEAT_COLS), r = Math.floor(i / SEAT_COLS), c = i % SEAT_COLS;
+  const gapY = Math.min(78, 300 / Math.max(1, rows - 1 || 1));
+  return {x: 92 + c * 108 + (c >= 3 ? 24 : 0), y: 190 + r * gapY};
+}
+function buildTwin(){
+  const studs = classStudents(curClass), c = getClass(curClass);
+  $("twinSub").textContent = c ? `${c.name} · ${c.room}` : "";
+  let g = `
+  <defs>
+    <radialGradient id="gasG"><stop offset="0" stop-color="#ff5c6c" stop-opacity=".55"/><stop offset="1" stop-color="#ff5c6c" stop-opacity="0"/></radialGradient>
+    <radialGradient id="lightG"><stop offset="0" stop-color="#ffe9a8" stop-opacity=".18"/><stop offset="1" stop-color="#ffe9a8" stop-opacity="0"/></radialGradient>
+    <pattern id="floor" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#141c27" stroke-width="1"/></pattern>
+  </defs>
+  <rect x="20" y="20" width="760" height="520" rx="10" fill="url(#floor)" stroke="#3a4656" stroke-width="4"/>
+  <g id="tLights"><circle cx="230" cy="260" r="260" fill="url(#lightG)"/><circle cx="570" cy="260" r="260" fill="url(#lightG)"/></g>
+  <rect x="250" y="28" width="300" height="10" rx="3" fill="#dfe6ee"/><text x="400" y="56" fill="#8b98a8" font-size="11" text-anchor="middle">WHITEBOARD</text>
+  <rect x="340" y="80" width="120" height="44" rx="6" id="tDesk" fill="#1c232d" stroke="#3a4656"/>
+  <text x="400" y="100" fill="#c3cfe0" font-size="11" text-anchor="middle" font-weight="700">TEACHER</text>
+  <text x="400" y="115" id="tTeacher" fill="#8b98a8" font-size="10" text-anchor="middle"></text>
+  <!-- door on right wall -->
+  <rect x="772" y="430" width="16" height="90" fill="#0b1018"/>
+  <line x1="780" y1="430" x2="780" y2="520" stroke="#2a3340" stroke-width="2" stroke-dasharray="4 4"/>
+  <g id="tDoor" class="door-leaf" style="transform-origin:780px 430px"><rect x="776" y="430" width="8" height="90" rx="2" fill="#8b5a2b"/></g>
+  <text x="742" y="545" fill="#8b98a8" font-size="10" text-anchor="middle" id="tDoorTxt">DOOR</text>
+  <rect x="736" y="404" width="30" height="20" rx="4" fill="#4f8cff"/><text x="751" y="418" fill="#fff" font-size="9" text-anchor="middle" font-weight="700">RFID</text>
+  <!-- gas sensor -->
+  <circle id="tGasCloud" cx="70" cy="490" r="40" fill="url(#gasG)"/>
+  <rect x="52" y="476" width="36" height="28" rx="5" fill="#1c232d" stroke="#f5b83d"/><text x="70" y="494" fill="#f5b83d" font-size="10" text-anchor="middle" font-weight="700">MQ-2</text>
+  <text x="70" y="520" id="tGasTxt" fill="#c3cfe0" font-size="11" text-anchor="middle" font-weight="700"></text>
+  <!-- PIR -->
+  <circle id="tPirPulse" class="pir-pulse" cx="48" cy="48" r="14" fill="none" stroke="#2ecc71" stroke-width="3"/>
+  <circle cx="48" cy="48" r="12" fill="#1c232d" stroke="#2ecc71"/><text x="48" y="52" fill="#2ecc71" font-size="9" text-anchor="middle" font-weight="700">PIR</text>
+  <!-- fan -->
+  <g transform="translate(400 146)"><g id="tFan"><circle r="5" fill="#8b98a8"/>
+    ${[0,120,240].map(a => `<ellipse rx="18" ry="5" cx="13" fill="#3a4656" transform="rotate(${a})"/>`).join("")}</g></g>
+  <text x="428" y="150" fill="#8b98a8" font-size="9" text-anchor="start" id="tFanTxt">FAN</text>
+  <!-- buzzer -->
+  <g id="tBuzz"><circle cx="752" cy="48" r="12" fill="#1c232d" stroke="#ff5c6c"/><text x="752" y="52" fill="#ff5c6c" font-size="12" text-anchor="middle">🔔</text></g>`;
+  studs.forEach((s, i) => {
+    const {x, y} = seatPos(i, studs.length);
+    g += `<g class="seatg" data-uid="${esc(s.uid)}" style="cursor:pointer">
+      <title>${esc(s.name)}</title>
+      <rect x="${x - 44}" y="${y - 18}" width="88" height="34" rx="6" fill="#151c26" stroke="#2a3340"/>
+      <circle class="seat" id="seat-${i}" cx="${x}" cy="${y + 28}" r="13" fill="#2a3340" stroke="#0b1018" stroke-width="2"/>
+      <text x="${x}" y="${y + 32}" fill="#0b1018" font-size="10" text-anchor="middle" font-weight="800" id="seatI-${i}">${esc(initials(s.name))}</text>
+      <text x="${x}" y="${y + 2}" fill="#c3cfe0" font-size="10" text-anchor="middle" id="seatN-${i}">${esc(s.name.split(" ")[0])}</text>
+    </g>`;
+  });
+  if (!studs.length) g += `<text x="400" y="300" fill="#8b98a8" font-size="14" text-anchor="middle">No students registered for this class</text>`;
+  $("twin").innerHTML = g;
+}
+
+function updateTwin(){
+  const st = live[curClass]; if (!st || !$("tDoor")) { renderTwinPanel(); return; }
+  const e = st.env, studs = classStudents(curClass), p = currentPeriod();
+  const open = e.door === "open";
+  $("tDoor").style.transform = open ? "rotate(-80deg)" : "rotate(0deg)";
+  $("tDoorTxt").textContent = open ? "DOOR OPEN" : "DOOR LOCKED";
+  $("tDoorTxt").setAttribute("fill", open ? "#2ecc71" : "#8b98a8");
+  $("tLights").style.opacity = e.light ? 1 : 0;
+  $("tFan").setAttribute("class", e.fan ? "fan-spin" : "");
+  $("tFanTxt").textContent = e.fan ? "FAN ON" : "FAN OFF";
+  $("tPirPulse").style.display = e.motion ? "" : "none";
+  const danger = e.gas >= GAS_THRESHOLD, lvl = Math.max(0, (e.gas - 2600) / 1500);
+  $("tGasCloud").setAttribute("r", 30 + lvl * (danger ? 420 : 120));
+  $("tGasCloud").setAttribute("class", danger ? "flash" : "");
+  $("tGasTxt").textContent = e.gas;
+  $("tGasTxt").setAttribute("fill", danger ? "#ff5c6c" : "#c3cfe0");
+  $("tBuzz").setAttribute("class", emg.active || danger ? "flash" : "");
+  $("tBuzz").style.opacity = emg.active || danger ? 1 : .35;
+  $("tTeacher").textContent = p && p.period !== "Interval" ? (st.session.active ? p.teacher : "Not arrived") : "-";
+  $("tDesk").setAttribute("stroke", p && st.session.active ? "#2ecc71" : "#3a4656");
+
+  studs.forEach((s, i) => {
+    const a = st.attendance[s.uid], seat = $("seat-" + i); if (!seat) return;
+    let col, label = s.name.split(" ")[0], op = 1;
+    if (emg.active) {
+      if (!emg.inside.includes(s.uid)) { col = SC.absent; op = .5; }
+      else if (emg.safe.has(s.uid)) { col = "#4f8cff"; label = "SAFE"; op = .55; }
+      else if (emg.lastSeen[s.uid]) { col = SC.overdue; label = "WASHROOM?"; }
+      else { col = SC.overdue; label = "INSIDE"; }
+      seat.setAttribute("class", "seat" + (emg.inside.includes(s.uid) && !emg.safe.has(s.uid) ? " flash" : ""));
+    } else {
+      const v = studentView(a);
+      col = SC[v.cls] || SC.present;
+      if (v.key === "out") label = "🚻 " + minsAgo(a.outSince) + "m";
+      if (v.key === "absent") op = .45;
+      seat.setAttribute("class", "seat" + (v.cls === "overdue" ? " flash" : ""));
+    }
+    seat.setAttribute("fill", col);
+    seat.parentNode.style.opacity = op;
+    $("seatN-" + i).textContent = label;
+  });
+  renderTwinPanel();
+}
+
+function renderTwinPanel(){
+  const st = live[curClass];
+  if (!st) { $("twinPanel").innerHTML = `<div class="empty">No class selected.</div>`; return; }
+  if (!emg.active) {
+    const studs = classStudents(curClass);
+    const inside = studs.filter(s => { const a = st.attendance[s.uid]; return a && (a.status === "present" || a.status === "late"); }).length;
+    $("twinPanel").innerHTML = `
+      <h2>Room Status</h2>
+      <div class="readout">
+        <div><span>People inside</span><b>${inside + (st.session.active ? 1 : 0)}</b></div>
+        <div><span>Gas level</span><b style="color:${st.env.gas >= GAS_THRESHOLD ? "var(--red)" : "var(--green)"}">${st.env.gas}</b></div>
+        <div><span>Door</span><b>${st.env.door === "open" ? "🔓 Open" : "🔒 Locked"}</b></div>
+        <div><span>Ventilation</span><b>${st.env.fan ? "🌀 On" : "Off"}</b></div>
+      </div>
+      <h2>Emergency Evacuation</h2>
+      <p class="note" style="margin-bottom:14px">If gas goes above the limit, the system starts this automatically: it unlocks the door, turns on the fan for ventilation, sounds the buzzer and begins a <b>live roll call</b>. Students tap their card at the assembly-point reader and the map shows exactly who is still inside.</p>
+      <button class="emg-btn" id="emgStart">🚨 START EMERGENCY EVACUATION</button>
+      ${demo ? `<button class="btn ghost" id="emgLeak" style="width:100%;margin-top:10px">🧪 Simulate gas leak (demo)</button>` : ""}`;
+    $("emgStart").onclick = async () => { if (await askConfirm("Start an emergency evacuation?\nThe door will unlock and the alarm will sound.")) startEmergency("Manual alarm by " + (user ? user.name : "staff")); };
+    if ($("emgLeak")) $("emgLeak").onclick = () => { demoLeak = true; toast("🧪 Gas level rising..."); };
+    return;
+  }
+  const secs = Math.floor((clockNow() - emg.startedAt) / 1000);
+  const total = emg.inside.length, safe = emg.safe.size;
+  const name = u => (cards.find(c => c.uid === u) || {}).name || u;
+  const missing = emg.inside.filter(u => !emg.safe.has(u)).sort((a, b) => (emg.lastSeen[b] ? 1 : 0) - (emg.lastSeen[a] ? 1 : 0));
+  const safeList = [...emg.safe.entries()].sort((a, b) => b[1] - a[1]);
+  $("twinPanel").innerHTML = `
+    <div class="emg-head">
+      <h3 class="flash">🚨 EVACUATION IN PROGRESS</h3>
+      <div style="font-size:13px;color:#ffb3bb;margin-bottom:10px">${esc(emg.reason)}</div>
+      <div class="emg-count">${safe} / ${total}</div>
+      <div style="font-size:13px;color:#ffd0d5">students accounted for</div>
+      <div class="emg-bar"><i style="width:${total ? safe / total * 100 : 100}%"></i></div>
+      <div style="font-size:12px;color:#ffd0d5">⏱️ ${Math.floor(secs / 60)}:${pad(secs % 60)} since alarm · Door unlocked · Fan on</div>
+    </div>
+    <h2>⚠️ Not yet safe (${missing.length})</h2>
+    <div class="rc-list" style="margin-bottom:14px">${missing.map(u => `<div class="rc missing"><div><b>${esc(name(u))}</b>
+        <small>${emg.lastSeen[u] ? "📍 Last seen: " + emg.lastSeen[u] + " (check there first)" : "Was in the classroom"}</small></div>
+        <button class="btn sm" data-safe="${esc(u)}">Mark safe</button></div>`).join("") || `<div class="rc safe">🎉 Everyone is safe</div>`}</div>
+    <h2>✅ Safe (${safe})</h2>
+    <div class="rc-list" style="max-height:160px;margin-bottom:14px">${safeList.map(([u, t]) => `<div class="rc safe"><b>${esc(name(u))}</b><small>${hm(new Date(t))}</small></div>`).join("")}</div>
+    <button class="btn ghost" id="emgEnd" style="width:100%">End emergency</button>`;
+  $("twinPanel").querySelectorAll("[data-safe]").forEach(b => b.onclick = () => markSafe(b.dataset.safe, "manual"));
+  $("emgEnd").onclick = async () => {
+    const left = total - safe;
+    if (await askConfirm(left ? `${left} student(s) are not marked safe yet.\nEnd the emergency anyway?` : "End the emergency and lock the door?")) endEmergency();
+  };
+}
+$("twin").addEventListener("click", e => {
+  const g = e.target.closest(".seatg"); if (!g) return;
+  if (emg.active && emg.inside.includes(g.dataset.uid)) markSafe(g.dataset.uid, "manual");
+  else { const s = cards.find(c => c.uid === g.dataset.uid); if (s) toast(`${s.name}: ${studentView(live[curClass].attendance[s.uid]).info}`); }
+});
+setInterval(() => { if (emg.active && $("page-twin").classList.contains("active")) renderTwinPanel(); }, 1000);
+
+/* ---------------- CLOCK ---------------- */
+function tick(){
+  const d = new Date(clockNow());
+  $("clock").textContent = hm(d) + ":" + pad(d.getSeconds());
+  $("date").textContent = d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+}
+setInterval(tick, 1000); tick();
+checkAuth();
+</script>
+</body>
+</html>
